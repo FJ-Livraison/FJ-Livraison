@@ -23,13 +23,12 @@ input,select,textarea,[contenteditable="true"]{font-size:max(16px,1em)}
 #clk{position:sticky;top:env(safe-area-inset-top,0px);z-index:6;height:28px;line-height:28px;background:var(--bg);text-align:center;font-size:calc(13px * var(--font-scale,1));color:var(--muted);font-weight:600;font-variant-numeric:tabular-nums}
 #clk::first-letter{text-transform:uppercase}
 body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,system-ui,"Segoe UI",Roboto,sans-serif;line-height:1.4;font-size:var(--app-font-size,16px)}
-#globalMenuBtn{position:fixed;top:calc(env(safe-area-inset-top,0px) + 34px);right:12px;z-index:70;width:44px;height:44px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--text);font-size:calc(25px * var(--font-scale,1));line-height:1;box-shadow:0 2px 8px rgba(0,0,0,.12)}
+#globalMenuBtn{display:none;position:fixed;top:calc(env(safe-area-inset-top,0px) + 34px);right:12px;z-index:70;width:44px;height:44px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--text);font-size:calc(25px * var(--font-scale,1));line-height:1;box-shadow:0 2px 8px rgba(0,0,0,.12)}
 #globalMenu{display:none;position:fixed;top:calc(env(safe-area-inset-top,0px) + 84px);right:12px;z-index:70;width:min(310px,calc(100vw - 24px));max-height:calc(100dvh - 110px);overflow:auto;padding:12px;background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:0 10px 35px rgba(0,0,0,.25)}
 #globalMenu.open{display:block}#globalMenu a,#globalMenu button.menuitem{display:block;width:100%;padding:12px;text-align:left;text-decoration:none;color:var(--text);background:none;border:0;border-bottom:1px solid var(--line);font:inherit}#globalMenu .menuhead{font-weight:800;padding:8px 10px;color:var(--accent)}#globalMenu label{display:block;padding:12px 8px 4px;font-weight:700}#globalMenu input[type=range]{width:100%;accent-color:var(--accent)}#globalMenu .fontsizeval{text-align:center;color:var(--accent);font-weight:800;padding:4px}
 #lbc{max-width:none;width:100%;height:100%;overflow:auto;padding:calc(64px + env(safe-area-inset-top,0px)) 12px calc(24px + env(safe-area-inset-bottom,0px))}
 #lbc img.photozoom{display:block;width:auto;max-width:100%;max-height:78vh;height:auto;object-fit:contain;margin:0 auto 16px;transform-origin:center center;touch-action:pan-x pan-y}
 #lb{overflow:hidden}#lbc{position:absolute;inset:0;max-width:none;width:100%;height:100%;margin:0;padding:calc(64px + env(safe-area-inset-top,0px)) 12px calc(24px + env(safe-area-inset-bottom,0px));overflow:auto;display:block}#lbc img.photozoom{max-width:100%;max-height:calc(100dvh - 110px);border-radius:8px}#lbc img.photozoom[style*="scale(2"],#lbc img.photozoom[style*="scale(3"],#lbc img.photozoom[style*="scale(4"]{max-width:none;max-height:none}
-#lbtools{position:fixed;top:calc(10px + env(safe-area-inset-top,0px));left:12px;z-index:22;display:flex;gap:6px}#lbtools button{width:40px;height:40px;border:0;border-radius:10px;background:rgba(255,255,255,.2);color:white;font-size:calc(22px * var(--font-scale,1))}
 header{position:sticky;top:calc(env(safe-area-inset-top,0px) + 28px);background:var(--bg);padding:12px 16px 10px;z-index:5;border-bottom:1px solid var(--line)}
 h1{font-size:calc(20px * var(--font-scale,1));margin:0 0 2px}
 .sub{color:var(--muted);font-size:calc(13px * var(--font-scale,1))}
@@ -118,8 +117,6 @@ main{padding:12px 16px 40px;max-width:640px;margin:auto}
 #photoFull.open{display:flex}
 #photoFullImg{display:block;max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;transform-origin:center center;user-select:none;-webkit-user-drag:none;touch-action:none}
 #photoFullClose{position:fixed;top:calc(12px + env(safe-area-inset-top,0px));right:12px;z-index:123;width:48px;height:48px;border:0;border-radius:50%;background:rgba(255,255,255,.24);color:#fff;font-size:28px;line-height:1}
-#photoFullTools{position:fixed;top:calc(12px + env(safe-area-inset-top,0px));left:12px;z-index:123;display:flex;gap:7px}
-#photoFullTools button{width:44px;height:44px;border:0;border-radius:10px;background:rgba(255,255,255,.24);color:#fff;font-size:24px}
 #pullRefresh{position:fixed;top:calc(env(safe-area-inset-top,0px) + 4px);left:50%;transform:translate(-50%,-70px);z-index:200;display:flex;align-items:center;gap:9px;padding:9px 14px;border-radius:24px;background:var(--card);color:var(--text);box-shadow:0 2px 12px #0004;font-size:13px;pointer-events:none;transition:transform .15s}
 #pullRefresh.visible{transform:translate(-50%,8px)}
 .pull-spinner{width:18px;height:18px;border:2px solid var(--line);border-top-color:var(--accent);border-radius:50%;display:inline-block}
@@ -133,8 +130,8 @@ main{padding:12px 16px 40px;max-width:640px;margin:auto}
 <header id="hd"></header>
 <main id="app"></main>
 <div id="ed"></div>
-<button id="globalMenuBtn" aria-label="Ouvrir le menu" aria-expanded="false">☰</button><nav id="globalMenu" aria-label="Menu principal"></nav><div id="lb"><div id="lbtools"><button id="lbminus" aria-label="Dézoomer">−</button><button id="lbplus" aria-label="Zoomer">＋</button><button id="lbreset" aria-label="Réinitialiser le zoom">↺</button></div><button id="lbx" aria-label="Fermer">✕</button><div id="lbc"></div></div>
-<div id="photoFull" aria-hidden="true"><button id="photoFullClose" type="button" aria-label="Retour aux photos">✕</button><div id="photoFullTools"><button id="photoFullMinus" type="button" aria-label="Dézoomer">−</button><button id="photoFullPlus" type="button" aria-label="Zoomer">＋</button><button id="photoFullReset" type="button" aria-label="Réinitialiser le zoom">↺</button></div><img id="photoFullImg" alt=""></div>
+<button id="globalMenuBtn" aria-label="Ouvrir le menu" aria-expanded="false">☰</button><nav id="globalMenu" aria-label="Menu principal"></nav><div id="lb"><button id="lbx" aria-label="Fermer">✕</button><div id="lbc"></div></div>
+<div id="photoFull" aria-hidden="true"><button id="photoFullClose" type="button" aria-label="Retour aux photos">✕</button><img id="photoFullImg" alt=""></div>
 <div id="pullRefresh" aria-hidden="true"><span class="pull-spinner"></span><span id="pullText">Tirer pour actualiser</span></div>
 <script>
 /* ===== CONNEXION AU SERVEUR (Firebase, gratuit) : colle ici tes 4 valeurs, voir les explications ===== */
@@ -477,25 +474,46 @@ function currentFontKey(){return "fj-font-size:"+(uid||S.pseudo||"guest")}
 function loadFontPreference(){var k=currentFontKey();if(k===fontUserKey)return;fontUserKey=k;try{appFontSize=clp(parseInt(localStorage.getItem(k),10)||16,14,25)}catch(e){appFontSize=16}}
 function saveFontPreference(){try{localStorage.setItem(fontUserKey||currentFontKey(),String(appFontSize))}catch(e){}}
 function applyFontSize(){document.documentElement.style.setProperty("--app-font-size",appFontSize+"px");document.documentElement.style.setProperty("--font-scale",String(appFontSize/16));var v=document.getElementById("fontSizeValue");if(v)v.textContent=appFontSize+" px"}
-function buildGlobalMenu(){var n='<div class="menuhead">Navigation</div><a href="#">🏠 Accueil / Tournées</a><a href="#reclam">'+(chief?'📨 Réclamations':'📨 Signaler un problème ou une idée')+'</a>';if(chief||dock)n+='<a href="#suivi">🔒 Suivi des tournées</a>';if(adm())n+='<a href="#equipe">👥 Équipe et accès</a><a href="#versions">🕘 Historique et corbeille</a>';n+='<a href="#histo">📅 Mon historique</a><div class="menuhead">Affichage</div><label for="fontSizeRange">Taille de la police</label><input id="fontSizeRange" type="range" min="14" max="25" step="1" value="'+appFontSize+'"><div class="fontsizeval" id="fontSizeValue">'+appFontSize+' px</div><button class="menuitem" id="fontReset">↺ Taille par défaut (16 px)</button>';if(window.FBX&&db&&FBX.signed)n+='<div class="menuhead">Compte</div><button class="menuitem" id="pwchg">🔑 Changer mon mot de passe</button><button class="menuitem" id="fbout">🔓 Se déconnecter ('+X(FBX.name)+')</button>';var m=document.getElementById("globalMenu");if(m)m.innerHTML=n;applyFontSize()}
+function buildGlobalMenu(){var n='<div class="menuhead">Navigation</div><a href="#reclam">'+(chief?'📨 Réclamations':'📨 Signaler un problème ou une idée')+'</a>';if(chief||dock)n+='<a href="#suivi">🔒 Suivi des tournées</a>';if(adm())n+='<a href="#equipe">👥 Équipe et accès</a><a href="#versions">🕘 Historique et corbeille</a>';n+='<a href="#histo">📅 Mon historique</a><div class="menuhead">Affichage</div><label for="fontSizeRange">Taille de la police</label><input id="fontSizeRange" type="range" min="14" max="25" step="1" value="'+appFontSize+'"><div class="fontsizeval" id="fontSizeValue">'+appFontSize+' px</div><button class="menuitem" id="fontReset">↺ Taille par défaut (16 px)</button>';if(window.FBX&&db&&FBX.signed)n+='<div class="menuhead">Compte</div><button class="menuitem" id="pwchg">🔑 Changer mon mot de passe</button><button class="menuitem" id="fbout">🔓 Se déconnecter ('+X(FBX.name)+')</button>';var m=document.getElementById("globalMenu");if(m)m.innerHTML=n;applyFontSize()}
 function setPhotoZoom(z){photoZoom=clp(z,.5,4);document.querySelectorAll("#lbc img").forEach(function(im){im.style.transform="scale("+photoZoom+")";im.style.maxWidth=photoZoom>1?"none":"100%";im.style.maxHeight=photoZoom>1?"none":"78vh"})}
 
-/* Visionneuse photo : la galerie et ses légendes restent ouvertes derrière. */
-var fullZoom=1,fullX=0,fullY=0,fullPointers={},fullPinchDist=0,fullPinchZoom=1,fullDrag=null;
-function paintFullPhoto(){var im=document.getElementById("photoFullImg");if(im)im.style.transform="translate("+fullX+"px,"+fullY+"px) scale("+fullZoom+")"}
-function setFullPhotoZoom(z){photoZoom=fullZoom=clp(z,1,5);if(fullZoom===1){fullX=0;fullY=0}paintFullPhoto()}
-function openFullPhoto(src,alt){var v=document.getElementById("photoFull"),im=document.getElementById("photoFullImg");im.src=src;im.alt=alt||"Photo agrandie";fullZoom=1;fullX=0;fullY=0;fullPointers={};paintFullPhoto();v.classList.add("open");v.setAttribute("aria-hidden","false");document.body.style.overflow="hidden"}
-function closeFullPhoto(){var v=document.getElementById("photoFull");v.classList.remove("open");v.setAttribute("aria-hidden","true");document.body.style.overflow="";fullPointers={};fullDrag=null}
+/* Visionneuse photo : zoom tactile centré sous les doigts et déplacement simultané. */
+var fullZoom=1,fullX=0,fullY=0,fullPointers={},fullGesture=null;
+function paintFullPhoto(){var im=document.getElementById("photoFullImg");if(im)im.style.transform="translate3d("+fullX+"px,"+fullY+"px,0) scale("+fullZoom+")"}
+function openFullPhoto(src,alt){var v=document.getElementById("photoFull"),im=document.getElementById("photoFullImg");im.src=src;im.alt=alt||"Photo agrandie";fullZoom=1;fullX=0;fullY=0;fullPointers={};fullGesture=null;paintFullPhoto();v.classList.add("open");v.setAttribute("aria-hidden","false");document.body.style.overflow="hidden"}
+function closeFullPhoto(){var v=document.getElementById("photoFull");v.classList.remove("open");v.setAttribute("aria-hidden","true");document.body.style.overflow="";fullPointers={};fullGesture=null}
 document.getElementById("photoFullClose").addEventListener("click",closeFullPhoto);
-document.getElementById("photoFullPlus").addEventListener("click",function(){setFullPhotoZoom(fullZoom+.25)});
-document.getElementById("photoFullMinus").addEventListener("click",function(){setFullPhotoZoom(fullZoom-.25)});
-document.getElementById("photoFullReset").addEventListener("click",function(){setFullPhotoZoom(1)});
 document.getElementById("photoFull").addEventListener("click",function(e){if(e.target===this)closeFullPhoto()});
-document.getElementById("photoFull").addEventListener("wheel",function(e){if(!this.classList.contains("open"))return;e.preventDefault();setFullPhotoZoom(fullZoom+(e.deltaY<0?.2:-.2))},{passive:false});
+document.getElementById("photoFull").addEventListener("wheel",function(e){if(!this.classList.contains("open"))return;e.preventDefault();var rect=this.getBoundingClientRect(),cx=e.clientX-rect.left-rect.width/2,cy=e.clientY-rect.top-rect.height/2,old=fullZoom,nz=clp(old+(e.deltaY<0?.2:-.2),1,5),ratio=nz/old;fullX=cx-(cx-fullX)*ratio;fullY=cy-(cy-fullY)*ratio;fullZoom=nz;paintFullPhoto()},{passive:false});
 var fullEl=document.getElementById("photoFull");
-fullEl.addEventListener("pointerdown",function(e){if(e.target.id!=="photoFullImg")return;e.preventDefault();try{this.setPointerCapture(e.pointerId)}catch(x){}fullPointers[e.pointerId]={x:e.clientX,y:e.clientY};var ids=Object.keys(fullPointers);if(ids.length===2){var a=fullPointers[ids[0]],b=fullPointers[ids[1]];fullPinchDist=Math.hypot(a.x-b.x,a.y-b.y);fullPinchZoom=fullZoom}else if(ids.length===1){fullDrag={x:e.clientX,y:e.clientY,px:fullX,py:fullY}}});
-fullEl.addEventListener("pointermove",function(e){if(!fullPointers[e.pointerId])return;fullPointers[e.pointerId]={x:e.clientX,y:e.clientY};var ids=Object.keys(fullPointers);if(ids.length===2){var a=fullPointers[ids[0]],b=fullPointers[ids[1]],d=Math.hypot(a.x-b.x,a.y-b.y);if(fullPinchDist>0)setFullPhotoZoom(fullPinchZoom*d/fullPinchDist)}else if(ids.length===1&&fullZoom>1&&fullDrag){fullX=fullDrag.px+e.clientX-fullDrag.x;fullY=fullDrag.py+e.clientY-fullDrag.y;paintFullPhoto()}});
-["pointerup","pointercancel","lostpointercapture"].forEach(function(ev){fullEl.addEventListener(ev,function(e){delete fullPointers[e.pointerId];if(Object.keys(fullPointers).length<2)fullPinchDist=0;if(!Object.keys(fullPointers).length)fullDrag=null})});
+function fullCentroid(a,b){return{x:(a.x+b.x)/2,y:(a.y+b.y)/2}}
+fullEl.addEventListener("pointerdown",function(e){
+ if(e.target.id!=="photoFullImg")return;e.preventDefault();
+ try{this.setPointerCapture(e.pointerId)}catch(x){}
+ fullPointers[e.pointerId]={x:e.clientX,y:e.clientY};
+ var ids=Object.keys(fullPointers),rect=this.getBoundingClientRect();
+ if(ids.length===2){
+  var a=fullPointers[ids[0]],b=fullPointers[ids[1]],c=fullCentroid(a,b),dist=Math.max(1,Math.hypot(a.x-b.x,a.y-b.y));
+  fullGesture={type:"pinch",dist:dist,zoom:fullZoom,x:fullX,y:fullY,cx:c.x-rect.left-rect.width/2,cy:c.y-rect.top-rect.height/2,
+   ax:(c.x-rect.left-rect.width/2-fullX)/fullZoom,ay:(c.y-rect.top-rect.height/2-fullY)/fullZoom};
+ }else if(ids.length===1){fullGesture={type:"pan",x:e.clientX,y:e.clientY,px:fullX,py:fullY}}
+});
+fullEl.addEventListener("pointermove",function(e){
+ if(!fullPointers[e.pointerId])return;e.preventDefault();fullPointers[e.pointerId]={x:e.clientX,y:e.clientY};
+ var ids=Object.keys(fullPointers),rect=this.getBoundingClientRect();
+ if(ids.length===2&&fullGesture&&fullGesture.type==="pinch"){
+  var a=fullPointers[ids[0]],b=fullPointers[ids[1]],c=fullCentroid(a,b),dist=Math.max(1,Math.hypot(a.x-b.x,a.y-b.y)),nz=clp(fullGesture.zoom*dist/fullGesture.dist,1,5);
+  var cx=c.x-rect.left-rect.width/2,cy=c.y-rect.top-rect.height/2;
+  fullZoom=nz;fullX=cx-fullGesture.ax*nz;fullY=cy-fullGesture.ay*nz;paintFullPhoto();
+ }else if(ids.length===1&&fullGesture&&fullGesture.type==="pan"&&fullZoom>1){
+  fullX=fullGesture.px+e.clientX-fullGesture.x;fullY=fullGesture.py+e.clientY-fullGesture.y;paintFullPhoto();
+ }
+});
+["pointerup","pointercancel","lostpointercapture"].forEach(function(ev){fullEl.addEventListener(ev,function(e){
+ delete fullPointers[e.pointerId];var ids=Object.keys(fullPointers);
+ if(ids.length===1){var id=ids[0],p=fullPointers[id];fullGesture={type:"pan",x:p.x,y:p.y,px:fullX,py:fullY}}
+ else if(!ids.length)fullGesture=null;
+})});
 document.addEventListener("keydown",function(e){if(e.key==="Escape"&&document.getElementById("photoFull").classList.contains("open"))closeFullPhoto()});
 /* Actualisation par glissement vers le bas, uniquement depuis le haut de la page. */
 (function(){var startY=0,tracking=false,refreshing=false,threshold=88,indicator=document.getElementById("pullRefresh"),label=document.getElementById("pullText");
@@ -504,13 +522,18 @@ document.addEventListener("touchmove",function(e){if(!tracking||refreshing)retur
 document.addEventListener("touchend",function(e){if(!tracking)return;var dy=e.changedTouches[0].clientY-startY;tracking=false;if(dy>threshold&&!refreshing){refreshing=true;indicator.classList.add("loading","visible");indicator.style.transform="translate(-50%,8px)";label.textContent="Actualisation…";setTimeout(function(){location.reload()},450)}else{indicator.classList.remove("visible");indicator.style.transform="";label.textContent="Tirer pour actualiser"}},{passive:true});
 document.addEventListener("touchcancel",function(){tracking=false;indicator.classList.remove("visible");indicator.style.transform=""},{passive:true});})();
 
-document.addEventListener("click",function(e){if(e.target.closest("#globalMenuBtn")){var m=document.getElementById("globalMenu"),b=document.getElementById("globalMenuBtn");m.classList.toggle("open");b.setAttribute("aria-expanded",m.classList.contains("open")?"true":"false");return}if(e.target.closest("#fontReset")){appFontSize=16;saveFontPreference();applyFontSize();var r=document.getElementById("fontSizeRange");if(r)r.value=16;return}if(e.target.closest("#pwchg")){pwDlg();return}if(e.target.closest("#fbout")){askConfirm("Se déconnecter de l’application ?","Déconnexion",function(){FBX.logout().then(function(){location.reload()})});return}if(e.target.closest("#lbplus")){setPhotoZoom(photoZoom+.25);return}if(e.target.closest("#lbminus")){setPhotoZoom(photoZoom-.25);return}if(e.target.closest("#lbreset")){setPhotoZoom(1);return}});
+document.addEventListener("click",function(e){if(e.target.closest("#globalMenuBtn")){var m=document.getElementById("globalMenu"),b=document.getElementById("globalMenuBtn");m.classList.toggle("open");b.setAttribute("aria-expanded",m.classList.contains("open")?"true":"false");return}if(e.target.closest("#fontReset")){appFontSize=16;saveFontPreference();applyFontSize();var r=document.getElementById("fontSizeRange");if(r)r.value=16;return}if(e.target.closest("#pwchg")){pwDlg();return}if(e.target.closest("#fbout")){askConfirm("Se déconnecter de l’application ?","Déconnexion",function(){FBX.logout().then(function(){location.reload()})});return}});
 document.addEventListener("input",function(e){if(e.target.id==="fontSizeRange"){appFontSize=+e.target.value;saveFontPreference();applyFontSize()}});
 function render(){
  newDay();
  if(!ready){document.getElementById("hd").innerHTML='<h1>🥖 Tournées de nuit</h1>';document.getElementById("app").innerHTML='<div class="sub">Connexion…</div>';return}
  var hd=document.getElementById("hd"),app=document.getElementById("app"),h="";
  loadFontPreference();buildGlobalMenu();
+ var menuBtn=document.getElementById("globalMenuBtn"),menuNav=document.getElementById("globalMenu");
+ var routeId=location.hash.slice(1),isTour=TOURS.some(function(x){return x.id===routeId});
+ var showHomeMenu=!!S.pseudo&&!routeId&&!isTour;
+ if(menuBtn)menuBtn.style.display=showHomeMenu?"block":"none";
+ if(menuNav&&!showHomeMenu){menuNav.classList.remove("open");if(menuBtn)menuBtn.setAttribute("aria-expanded","false");}
  if(!S.pseudo){
   hd.innerHTML='<h1>🥖 Tournées de nuit</h1><div class="sub">Bienvenue</div>';
   app.innerHTML='<p><b>Comment tu t’appelles ?</b><br><span class="sub">Ton pseudo sera enregistré sur ce téléphone et associé à tes tournées.</span></p><input class="in" id="ps" maxlength="30" placeholder="Prénom ou pseudo" autocomplete="off"><button class="go" id="okp">Commencer</button>';return}
