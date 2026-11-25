@@ -189,7 +189,7 @@ function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
 function newDay(){if(S.date!==today()){S.date=today();S.done={};S.logs={};save();return true}return false}
 newDay();
 /* Suivi partagé (si disponible) */
-var db=null,uid=null,chief=false,owner=false,ready=false,asset=null,E=null,ET=null,UNS=null,EDS=[],DOCK=[],CHEFS=[],ADMINS=[],chefR=false,ADMINID="",dock=false,RELAY="",SUNSUB=null,SDATA=null,BASE=null,q=Promise.resolve(),syncOk=null;
+var db=null,uid=null,chief=false,owner=false,ready=false,asset=null,E=null,ET=null,pendingEditTourId=null,UNS=null,EDS=[],DOCK=[],CHEFS=[],ADMINS=[],chefR=false,ADMINID="",dock=false,RELAY="",SUNSUB=null,SDATA=null,BASE=null,q=Promise.resolve(),syncOk=null;
 function sync(t){
  if(!db||!uid||!S.pseudo)return;var l=S.logs[t.id];if(!l)return;
  S.hist=S.hist||{};
@@ -407,6 +407,7 @@ function restoreVersion(hid){db.doc("tourHistory/"+hid).get().then(function(sn){
 function saveContent(){return saveTour(E.t)}
 function toggleEd(id){var i=EDS.indexOf(id);if(i<0)EDS.push(id);else EDS.splice(i,1);db.doc("config/editors").set({ids:EDS}).then(render,function(){msg("Refusé.")})}
 function openTourEd(id){
+ pendingEditTourId=id!=="new"?id:null;
  var t=id==="new"?{id:"t"+Date.now().toString(36),name:"",depart:"",desc:"",notes:[],stops:[],order:Date.now(),cat:S.cat||"weekend",isNew:1}:TOURS.find(function(x){return x.id===id});if(!t)return;
  ET=t;var old=t.depart==null&&!t.isNew;
  var o='<h2 style="margin:0">'+(t.isNew?"Nouvelle tournée":"Modifier la tournée")+'</h2>';
@@ -426,7 +427,7 @@ function tClick(e){
  if(b.id==="tsave"){var g=function(i){return document.getElementById("t"+i).value.trim()},t=ET;if(!g(0)){msg("Écris le titre de la tournée.");return}
   t.name=g(0);t.cat=g(4);t.next=g(5);t.depart=g(1);t.desc=g(2);t.notes=ed2md(document.getElementById("t3")).split("\n").map(function(x){return x.trim()}).filter(Boolean);t.sub=[t.depart?"Départ "+t.depart:"",t.desc].filter(Boolean).join(" · ");var nw=t.isNew;delete t.isNew;
   saveTour(t).then(function(){el.style.display="none";ET=null;if(nw){if(TOURS.indexOf(t)<0)TOURS.push(t);location.hash="#"+t.id}render()})}}
-function openEd(t,i){var n=i==="new";E={t:t,i:n?-1:+i,s:n?["","","",0,0,"",[],"","","",""]:JSON.parse(JSON.stringify(t.stops[+i]))};E.c0={};(E.s[6]||[]).forEach(function(p){E.c0[p[1]]=p[0]});drawEd()}
+function openEd(t,i){pendingEditTourId=t&&t.id||null;var n=i==="new";E={t:t,i:n?-1:+i,s:n?["","","",0,0,"",[],"","","",""]:JSON.parse(JSON.stringify(t.stops[+i]))};E.c0={};(E.s[6]||[]).forEach(function(p){E.c0[p[1]]=p[0]});drawEd()}
 function drawEd(){
  var s=E.s,o='<h2 style="margin:0">'+(E.i<0?"Nouvel arrêt":"Modifier l’arrêt")+'</h2>';
  o+='<label>Nom du client</label><input class="in" id="e0" value="'+esc(unesc(s[0]))+'"><label>Heure d’arrivée (ex : 2h05 à 2h10)</label><input class="in" id="e1" value="'+esc(unesc(s[1]))+'">';
@@ -522,7 +523,7 @@ document.addEventListener("touchmove",function(e){if(!tracking||refreshing)retur
 document.addEventListener("touchend",function(e){if(!tracking)return;var dy=e.changedTouches[0].clientY-startY;tracking=false;if(dy>threshold&&!refreshing){refreshing=true;indicator.classList.add("loading","visible");indicator.style.transform="translate(-50%,8px)";label.textContent="Actualisation…";setTimeout(function(){location.reload()},450)}else{indicator.classList.remove("visible");indicator.style.transform="";label.textContent="Tirer pour actualiser"}},{passive:true});
 document.addEventListener("touchcancel",function(){tracking=false;indicator.classList.remove("visible");indicator.style.transform=""},{passive:true});})();
 
-document.addEventListener("click",function(e){var m=document.getElementById("globalMenu"),b=document.getElementById("globalMenuBtn");if(e.target.closest("#globalMenuBtn")){m.classList.toggle("open");b.setAttribute("aria-expanded",m.classList.contains("open")?"true":"false");return}if(m&&m.classList.contains("open")&&!e.target.closest("#globalMenu")){m.classList.remove("open");if(b)b.setAttribute("aria-expanded","false")}if(e.target.closest("#fontReset")){appFontSize=16;saveFontPreference();applyFontSize();var r=document.getElementById("fontSizeRange");if(r)r.value=16;return}if(e.target.closest("#pwchg")){pwDlg();return}if(e.target.closest("#fbout")){askConfirm("Se déconnecter de l’application ?","Déconnexion",function(){FBX.logout().then(function(){location.reload()})});return}});
+document.addEventListener("click",function(e){var m=document.getElementById("globalMenu"),b=document.getElementById("globalMenuBtn");if(e.target.closest("#globalMenu a")){closeGlobalMenuNow();if(b)b.style.display="none";return}if(e.target.closest("#globalMenuBtn")){m.classList.toggle("open");b.setAttribute("aria-expanded",m.classList.contains("open")?"true":"false");return}if(m&&m.classList.contains("open")&&!e.target.closest("#globalMenu")){m.classList.remove("open");if(b)b.setAttribute("aria-expanded","false")}if(e.target.closest("#fontReset")){appFontSize=16;saveFontPreference();applyFontSize();var r=document.getElementById("fontSizeRange");if(r)r.value=16;return}if(e.target.closest("#pwchg")){pwDlg();return}if(e.target.closest("#fbout")){askConfirm("Se déconnecter de l’application ?","Déconnexion",function(){FBX.logout().then(function(){location.reload()})});return}});
 document.addEventListener("input",function(e){if(e.target.id==="fontSizeRange"){appFontSize=+e.target.value;saveFontPreference();applyFontSize()}});
 function render(){
  newDay();
@@ -790,7 +791,7 @@ function goAppBack(){
  var lb=document.getElementById("lb");
  if(lb&&getComputedStyle(lb).display!=="none"){lb.style.display="none";document.body.style.overflow="";return true}
  var ed=document.getElementById("ed");
- if(ed&&getComputedStyle(ed).display!=="none"){ed.style.display="none";E=null;ET=null;render();return true}
+ if(ed&&getComputedStyle(ed).display!=="none"){ed.style.display="none";E=null;ET=null;var parentTour=pendingEditTourId;pendingEditTourId=null;if(parentTour&&TOURS.some(function(x){return x.id===parentTour})&&location.hash!=="#"+parentTour){location.hash="#"+parentTour;return true}render();return true}
  var current=location.hash;
  if(appRouteHistory.length>1){appRouteHistory.pop();var previous=appRouteHistory[appRouteHistory.length-1];if(previous!==current){location.hash=previous;return true}}
  if(current){location.hash="";return true}
