@@ -54,6 +54,8 @@ main{padding:12px 16px 40px;max-width:640px;margin:auto}
 #lb{position:fixed;inset:0;background:rgba(0,0,0,.94);display:none;overflow-y:auto;-webkit-overflow-scrolling:touch;z-index:20}
 #lbc{max-width:640px;margin:auto;padding:calc(56px + env(safe-area-inset-top,0px)) 12px calc(30px + env(safe-area-inset-bottom,0px))}
 #lbc img{display:block;width:100%;border-radius:12px;margin:0 0 16px}
+#lbc .lbt{color:#fff;font-size:24px;font-weight:700;line-height:1.2;margin:0 0 16px;padding-right:46px}
+.ph img{cursor:pointer}
 #lbc .cap{color:#fff;font-size:18px;line-height:1.35;font-weight:500;margin:0 0 8px}
 #lbx{position:fixed;top:calc(10px + env(safe-area-inset-top,0px));right:12px;z-index:21;width:44px;height:44px;border-radius:50%;border:0;background:rgba(255,255,255,.2);color:#fff;font-size:22px}
 
@@ -166,7 +168,7 @@ function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
 function newDay(){if(S.date!==today()){S.date=today();S.done={};S.logs={};save();return true}return false}
 newDay();
 /* Suivi partagé (si disponible) */
-var db=null,uid=null,chief=false,owner=false,ready=false,asset=null,E=null,ET=null,UNS=null,EDS=[],DOCK=[],dock=false,RELAY="",SUNSUB=null,SDATA=null,BASE=null,q=Promise.resolve(),syncOk=null;
+var db=null,uid=null,chief=false,owner=false,ready=false,asset=null,E=null,ET=null,UNS=null,EDS=[],DOCK=[],CHEFS=[],chefR=false,ADMINID="",dock=false,RELAY="",SUNSUB=null,SDATA=null,BASE=null,q=Promise.resolve(),syncOk=null;
 function sync(t){
  if(!db||!uid||!S.pseudo)return;var l=S.logs[t.id];if(!l)return;
  S.hist=S.hist||{};
@@ -213,6 +215,7 @@ async function boot(){
    var d=await claude.use("db"),u=await claude.use("user");
    if(d&&u){
     var me=await u.me();uid=me.id;db=d;try{localStorage.setItem("fbok","1")}catch(x){}owner=await u.isOwner();chief=owner;UNS=u;
+    var ad0=await fget(db.doc("config/admin"));ADMINID=ad0.exists?ad0.data().uid:"";
     if(!owner){var rv=await db.doc("members/"+uid).get({source:"server"}).then(function(sn){return !sn.exists},function(){return false});
      if(rv){db=null;try{await FBX.logout()}catch(x){}ready=true;loginScreen("Votre accès a été retiré. Créez un compte avec le nouveau code d’invitation.");return}}
     if(me.name){S.pseudo=me.name;save()}
@@ -227,8 +230,9 @@ async function boot(){
     db.doc("config/dock").onSnapshot(function(sn){DOCK=(sn.exists&&sn.data().ids)||[];dock=DOCK.indexOf(uid)>=0;if(ready&&!E&&!ET)render()},function(){});
     db.doc("config/app").onSnapshot(function(sn){RELAY=(sn.exists&&sn.data().relay)||""},function(){});
     if(!owner)db.doc("members/"+uid).onSnapshot(function(sn){if(!sn.exists&&!sn.metadata.fromCache&&window.FBX)FBX.logout().then(function(){location.reload()})},function(){});
-    db.doc("config/editors").onSnapshot(function(sn){EDS=(sn.exists&&sn.data().ids)||[];chief=owner||EDS.indexOf(uid)>=0;if(ready&&!E&&!ET)render()},function(){});
-    db.collection("tours").onSnapshot(function(sn){var m={};BASE.forEach(function(t){m[t.id]=t});sn.docs.forEach(function(d){try{var t=JSON.parse(d.data().json);if(t.del)delete m[t.id];else m[t.id]=t}catch(x){}});TOURS=Object.keys(m).map(function(k){return m[k]}).sort(function(a,b){return (a.order||0)-(b.order||0)});restoreToday();save();prefetchPhotos();if(ready&&!E&&!ET)render()},function(){});
+    db.doc("config/chefs").onSnapshot(function(sn){CHEFS=(sn.exists&&sn.data().ids)||[];chefR=CHEFS.indexOf(uid)>=0;chief=owner||chefR||EDS.indexOf(uid)>=0;if(ready&&!E&&!ET)render()},function(){});
+    db.doc("config/editors").onSnapshot(function(sn){EDS=(sn.exists&&sn.data().ids)||[];chief=owner||chefR||EDS.indexOf(uid)>=0;if(ready&&!E&&!ET)render()},function(){});
+    db.collection("tours").onSnapshot(function(sn){var m={};BASE.forEach(function(t){m[t.id]=t});TRASH=[];sn.docs.forEach(function(d){var dd=d.data();if(dd.del===true){TRASH.push({id:d.id,name:jname(dd.json)||d.id,byName:dd.delByName||"",at:dd.delAt||""});delete m[d.id];return}try{var t=JSON.parse(dd.json);if(t.del)delete m[t.id];else m[t.id]=t}catch(x){}});TOURS=Object.keys(m).map(function(k){return m[k]}).sort(function(a,b){return (a.order||0)-(b.order||0)});restoreToday();save();prefetchPhotos();if(ready&&!E&&!ET)render()},function(){});
    }
   }
  }catch(x){}
@@ -365,7 +369,19 @@ function mapSheet(i){var t=cur();if(!t)return;var s=t.stops[i],d=document.create
  d.innerHTML='<div class="cfb"><p><b>'+X(s[0])+'</b>'+(s[8]?'<br><span class="sub">📍 '+X(s[8])+'</span>':'')+'</p><div class="btns">'+nav(s)+'</div><div class="btns" style="margin-top:8px"><button class="p" id="mgo" style="background:none;color:var(--text);border:2px solid var(--line)">Voir la fiche</button><button class="p" id="mxx" style="background:none;color:var(--text);border:2px solid var(--line)">Fermer</button></div></div>';document.body.appendChild(d);
  d.querySelector("#mxx").onclick=function(){d.remove()};
  d.querySelector("#mgo").onclick=function(){d.remove();mapFs(false);var c=document.getElementById("s"+(i+1));if(c){c.style.display="";c.scrollIntoView({block:"start"})}}}
-function saveTour(t){if(!db)return Promise.reject();return db.doc("tours/"+t.id).set({json:JSON.stringify(t),by:uid||"",at:new Date().toISOString()}).catch(function(){msg("Enregistrement refusé.")})}
+var LASTH={},TRASH=[];
+function nowIso(){return new Date().toISOString()}
+function dtf(iso){try{return new Date(iso).toLocaleString("fr-FR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}catch(e){return ""}}
+function jname(j){try{return JSON.parse(j).name||""}catch(e){return ""}}
+function addHist(tour,json,action,extra){return db.collection("tourHistory").add({tour:tour,name:jname(json),action:action,json:json,by:uid||"",byName:(S.pseudo||"")+(extra||""),at:nowIso()}).catch(function(){})}
+function saveTour(t){if(!db)return Promise.reject();var ref=db.doc("tours/"+t.id),nj=JSON.stringify(t);
+ return ref.get().then(function(sn){return sn},function(){return null}).then(function(sn){var prev=sn&&sn.exists?sn.data():null,p=Promise.resolve();
+  if(prev&&prev.json&&prev.json!==nj&&prev.del!==true){var now=Date.now();if(!LASTH[t.id]||now-LASTH[t.id]>600000){LASTH[t.id]=now;p=addHist(t.id,prev.json,"edit")}}
+  return p.then(function(){return ref.set({json:nj,by:uid||"",at:nowIso()})})}).catch(function(){msg("Enregistrement refusé.")})}
+function delTour(id,cur){if(!db)return Promise.reject();var ref=db.doc("tours/"+id);
+ return ref.get().then(function(sn){var pj=sn.exists?sn.data().json:JSON.stringify(cur||{id:id});return addHist(id,pj,"delete").then(function(){var f={del:true,delBy:uid||"",delByName:S.pseudo||"",delAt:nowIso()};return sn.exists?ref.update(f):ref.set(Object.assign({json:pj,by:uid||"",at:nowIso()},f))})})}
+function restoreVersion(hid){db.doc("tourHistory/"+hid).get().then(function(sn){if(!sn.exists)return;var v=sn.data(),ref=db.doc("tours/"+v.tour);
+ return ref.get().then(function(c){var p=Promise.resolve();if(c.exists&&c.data().json&&c.data().del!==true)p=addHist(v.tour,c.data().json,"edit"," (avant restauration)");return p.then(function(){return ref.set({json:v.json,by:uid||"",at:nowIso()})})})}).then(function(){msg("Version restaurée.");render()},function(){msg("Restauration impossible.")})}
 function saveContent(){return saveTour(E.t)}
 function toggleEd(id){var i=EDS.indexOf(id);if(i<0)EDS.push(id);else EDS.splice(i,1);db.doc("config/editors").set({ids:EDS}).then(render,function(){msg("Refusé.")})}
 function openTourEd(id){
@@ -379,16 +395,16 @@ function openTourEd(id){
  o+='<label>Tournée à enchaîner après celle-ci (proposée au chauffeur à la fin)</label><select class="in" id="t5"><option value="">Aucune</option>'+TOURS.filter(function(x){return x.id!==t.id}).map(function(x){return '<option value="'+x.id+'"'+(t.next===x.id?" selected":"")+'>'+X(x.name)+'</option>'}).join("")+'</select>';
  o+='<label>Notes pour le chauffeur (une par ligne)</label><div><button type="button" class="sm" data-lk="t3">🔗 Lien</button></div><div class="rte" id="t3" contenteditable="true">'+(t.notes||[]).map(LK).join("<br>")+'</div>';
  o+='<div class="btns" style="margin-top:18px"><button class="p" id="tsave">Enregistrer</button><button class="p" id="tcancel" style="background:none;color:var(--text);border:2px solid var(--line)">Annuler</button></div>';
- if(!t.isNew)o+='<div class="btns"><button class="sm" id="tdel" style="color:#c0392b">Supprimer la tournée</button></div>';
+ if(!t.isNew&&adm())o+='<div class="btns"><button class="sm" id="tdel" style="color:#c0392b">Supprimer la tournée</button></div>';
  var el=document.getElementById("ed");el.innerHTML=o;el.style.display="block"}
 function tClick(e){
  var b=e.target.closest("button");if(!b)return;var el=document.getElementById("ed");
  if(b.id==="tcancel"){el.style.display="none";ET=null;render();return}
- if(b.id==="tdel"){askConfirm("Supprimer cette tournée pour tout le monde ?","Supprimer",function(){saveTour({id:ET.id,del:1}).then(function(){el.style.display="none";ET=null;location.hash="";render()})});return}
+ if(b.id==="tdel"){if(!adm()){msg("Seuls l’admin et les chefs peuvent supprimer une tournée.");return}askConfirm("Supprimer cette tournée pour tout le monde ? Elle ira dans la corbeille et pourra être restaurée.","Supprimer",function(){var tt=ET;delTour(tt.id,tt).then(function(){el.style.display="none";ET=null;location.hash="";render();msg("Tournée mise à la corbeille.")},function(){msg("Suppression impossible.")})});return}
  if(b.id==="tsave"){var g=function(i){return document.getElementById("t"+i).value.trim()},t=ET;if(!g(0)){msg("Écris le titre de la tournée.");return}
   t.name=g(0);t.cat=g(4);t.next=g(5);t.depart=g(1);t.desc=g(2);t.notes=ed2md(document.getElementById("t3")).split("\n").map(function(x){return x.trim()}).filter(Boolean);t.sub=[t.depart?"Départ "+t.depart:"",t.desc].filter(Boolean).join(" · ");var nw=t.isNew;delete t.isNew;
   saveTour(t).then(function(){el.style.display="none";ET=null;if(nw){if(TOURS.indexOf(t)<0)TOURS.push(t);location.hash="#"+t.id}render()})}}
-function openEd(t,i){var n=i==="new";E={t:t,i:n?-1:+i,s:n?["","","",0,0,"",[],"","","",""]:JSON.parse(JSON.stringify(t.stops[+i]))};drawEd()}
+function openEd(t,i){var n=i==="new";E={t:t,i:n?-1:+i,s:n?["","","",0,0,"",[],"","","",""]:JSON.parse(JSON.stringify(t.stops[+i]))};E.c0={};(E.s[6]||[]).forEach(function(p){E.c0[p[1]]=p[0]});drawEd()}
 function drawEd(){
  var s=E.s,o='<h2 style="margin:0">'+(E.i<0?"Nouvel arrêt":"Modifier l’arrêt")+'</h2>';
  o+='<label>Nom du client</label><input class="in" id="e0" value="'+esc(unesc(s[0]))+'"><label>Heure d’arrivée (ex : 2h05 à 2h10)</label><input class="in" id="e1" value="'+esc(unesc(s[1]))+'">';
@@ -396,7 +412,7 @@ function drawEd(){
  o+='<label>Ville (sert à la recherche, ex : Gerzat)</label><input class="in" id="e8" value="'+esc(unesc(s[8]||""))+'">';
  o+='<label>Téléphone du client, puis lien à ouvrir en touchant le numéro (facultatifs)</label><div style="display:flex;gap:8px"><input class="in" id="e9" type="tel" style="flex:1;min-width:0" value="'+esc(s[9]||"")+'" placeholder="Numéro"><input class="in" id="e10" style="flex:1;min-width:0" value="'+esc(s[10]||"")+'" placeholder="Lien (https://…)" autocapitalize="off" autocorrect="off"></div>';
  o+='<label>Facultatif : latitude, longitude, code Waze</label><input class="in" id="e3" value="'+(s[3]||"")+'"><input class="in" id="e4" value="'+(s[4]||"")+'"><input class="in" id="e2" value="'+esc(s[2]||"")+'">';
- o+='<label>Consignes</label><div><button type="button" class="sm" data-lk="e5">🔗 Lien</button> <span class="sub">sélectionne un mot, puis touche Lien</span></div><div class="rte" id="e5" contenteditable="true">'+String(s[5]||"").split("<br>").map(LK).join("<br>")+'</div><label>Photos</label>';
+ o+='<label>Consignes</label><div><button type="button" class="sm" data-lk="e5">🔗 Lien</button> <span class="sub">sélectionne un mot, puis touche Lien</span></div><div class="rte" id="e5" contenteditable="true">'+String(s[5]||"").split("<br>").map(LK).join("<br>")+'</div><label>Photos <span class="sub">(touche une photo pour la changer)</span></label>';
  s[6].forEach(function(p,j){o+='<div class="ph"><img data-fs="'+esc(p[1])+'" src="'+esc(PIMG(p[1]))+'" alt=""><input data-cap="'+j+'" value="'+esc(p[0])+'" placeholder="Légende"><button data-mv="'+j+'">↑</button><button data-rm="'+j+'">✕</button></div>'});
  o+='<input type="file" accept="image/*" id="efile" style="display:none"><button class="edb" id="eadd">📷 Ajouter une photo</button>';
  o+='<div class="btns" style="margin-top:18px"><button class="p" id="esave">Enregistrer</button><button class="p" id="ecancel" style="background:none;color:var(--text);border:2px solid var(--line)">Annuler</button></div>';
@@ -406,16 +422,17 @@ function readEd(){var s=E.s,g=function(i){return document.getElementById("e"+i).
 function closeEd(){document.getElementById("ed").style.display="none";E=null;render()}
 function edClick(e){
  if(ET){tClick(e);return}
+ var im=e.target.closest&&e.target.closest(".ph img");if(im){readEd();var jj=[].indexOf.call(document.querySelectorAll("#ed .ph img"),im);if(jj<0)return;askChoice("Changer cette photo ? La légende est conservée.","Changer la photo",function(){if(!asset){msg("Ajout de photo réservé aux éditeurs.");return}E.rep=jj;document.getElementById("efile").click()});return}
  var b=e.target.closest("button");if(!b)return;
  if(b.id==="ecancel"){closeEd();return}
  readEd();var a=E.s[6],st=E.t.stops;
  if(b.dataset.rm!=null){a.splice(+b.dataset.rm,1);drawEd();return}
  if(b.dataset.mv!=null){var j=+b.dataset.mv;if(j>0){var x=a[j];a[j]=a[j-1];a[j-1]=x}drawEd();return}
- if(b.id==="eadd"){if(!asset){msg("Ajout de photo réservé aux éditeurs.");return}document.getElementById("efile").click();return}
+ if(b.id==="eadd"){if(!asset){msg("Ajout de photo réservé aux éditeurs.");return}E.rep=null;document.getElementById("efile").click();return}
  if(b.dataset.so){var k=E.i+ +b.dataset.so;if(k<0||k>=st.length){msg(k<0?"Cet arrêt est déjà le premier.":"Cet arrêt est déjà le dernier.");return}st[E.i]=E.s;var y=st[k];st[k]=st[E.i];st[E.i]=y;saveContent().then(function(){closeEd();setTimeout(function(){var el=document.getElementById("s"+(k+1));if(el)el.scrollIntoView({block:"center"})},60)});return}
- if(b.id==="esave"){if(!E.s[0]){msg("Écris le nom du client.");return}if(E.i<0)st.push(E.s);else st[E.i]=E.s;saveContent().then(closeEd);return}
+ if(b.id==="esave"){if(!E.s[0]){msg("Écris le nom du client.");return}autoCaps();if(E.i<0)st.push(E.s);else st[E.i]=E.s;saveContent().then(closeEd);return}
  if(b.id==="edel"){askConfirm("Supprimer ce client de la tournée ?","Supprimer",function(){st.splice(E.i,1);saveContent().then(closeEd)})}}
-document.addEventListener("change",function(e){if(e.target.id==="e7"&&E){handleAddr(e.target.value);return}if(e.target.id!=="efile"||!e.target.files[0]||!E)return;readEd();var img=new Image();img.onload=function(){var r=Math.min(1,900/Math.max(img.width,img.height)),c=document.createElement("canvas");c.width=img.width*r;c.height=img.height*r;c.getContext("2d").drawImage(img,0,0,c.width,c.height);c.toBlob(function(b){asset.upload(b).then(function(x){E.s[6].push(["",x.url]);drawEd()},function(){msg("Échec de l’envoi de la photo")})},"image/jpeg",.72)};img.src=URL.createObjectURL(e.target.files[0])});
+document.addEventListener("change",function(e){if(e.target.id==="e7"&&E){handleAddr(e.target.value);return}if(e.target.id!=="efile"||!e.target.files[0]||!E)return;readEd();var img=new Image();img.onload=function(){var r=Math.min(1,900/Math.max(img.width,img.height)),c=document.createElement("canvas");c.width=img.width*r;c.height=img.height*r;c.getContext("2d").drawImage(img,0,0,c.width,c.height);c.toBlob(function(b){asset.upload(b).then(function(x){if(E.rep!=null&&E.s[6][E.rep]){var ok=E.s[6][E.rep][1];E.c0[x.url]=E.c0[ok];E.s[6][E.rep][1]=x.url}else E.s[6].push(["",x.url]);E.rep=null;drawEd()},function(){E.rep=null;msg("Échec de l’envoi de la photo")})},"image/jpeg",.72)};img.src=URL.createObjectURL(e.target.files[0])});
 
 function vord(t){var o=(S.ord||{})[t.id],n=t.stops.length,ix=[],i;for(i=0;i<n;i++)ix.push(i);if(!o||(SHARED&&chief))return ix;var pos={};o.forEach(function(nm,p){pos[nm]=p});return ix.sort(function(a,b){var pa=pos[t.stops[a][0]],pb=pos[t.stops[b][0]];pa=pa==null?1e6+a:pa;pb=pb==null?1e6+b:pb;return pa-pb})}
 function cnt(t){var d=S.done[t.id]||{},c=0;t.stops.forEach(function(s,i){if(d[i+1])c++});return c}
@@ -435,23 +452,34 @@ function render(){
   hd.innerHTML='<a class="back" href="#">← Toutes les tournées</a><h1>📅 Mon historique</h1><div class="sub">Tes tournées des derniers jours</div>';
   var o="",last="";Object.keys(S.hist||{}).map(function(k){return S.hist[k]}).sort(function(a,b){return (b.date+(b.startedAt||"")).localeCompare(a.date+(a.startedAt||""))}).forEach(function(r){if(r.date!==last){last=r.date;o+='<div class="day">'+esc(r.date)+'</div>'}o+=row(r)});
   app.innerHTML=o||'<div class="sub">Aucune tournée enregistrée pour le moment.</div>';return}
- if(id==="equipe"&&owner){
-  hd.innerHTML='<a class="back" href="#">← Toutes les tournées</a><h1>👥 Équipe et accès</h1><div class="sub">Réservé à l’admin</div>';
+ if(id==="equipe"&&adm()){
+  hd.innerHTML='<a class="back" href="#">← Toutes les tournées</a><h1>👥 Équipe et accès</h1><div class="sub">Réservé à l’admin et aux chefs</div>';
   app.innerHTML='<div class="sub">Chargement…</div>';
   Promise.all([db.collection("people").get(),db.collection("members").get(),db.doc("config/invite").get(),db.doc("config/app").get()]).then(function(R){var sn=R[0],MB={},INV=(R[2].exists&&R[2].data().code)||"",RL=(R[3].exists&&R[3].data().relay)||"";R[1].docs.forEach(function(d){MB[d.id]=d.data()});var ids=sn.docs.map(function(x){return x.id});return UNS.profiles(ids).then(function(ps){
-   var o='<div class="notes"><b>Les postes</b><ul><li><b>Chauffeur</b> : utilise les tournées et coche ses clients.</li><li><b>Chef de quai</b> : comme un chauffeur, plus l’accès au suivi des tournées en direct.</li><li><b>Éditeur</b> : peut en plus créer et modifier tournées, clients, consignes et photos, et voit le suivi.</li><li><b>Admin</b> : tout, plus cette page.</li></ul><div class="sub" style="margin-top:6px">Pour inviter quelqu’un : envoie-lui le lien de l’appli et le code d’invitation. Il crée son compte (nom et prénom, mot de passe) et apparaît ici comme chauffeur.</div></div>';
+   var o='<div class="notes"><b>Les postes</b><ul><li><b>Chauffeur</b> : utilise les tournées et coche ses clients.</li><li><b>Chef de quai</b> : comme un chauffeur, plus l’accès au suivi des tournées en direct.</li><li><b>Éditeur</b> : peut en plus créer et modifier tournées, clients, consignes et photos, et voit le suivi.</li><li><b>Chef</b> : comme un éditeur, plus cette page (équipe, code d’invitation, corbeille, sauvegardes, relais). Seul l’admin nomme les chefs.</li><li><b>Admin</b> : tout, il choisit les chefs et l’admin suivant.</li></ul><div class="sub" style="margin-top:6px">Pour inviter quelqu’un : envoie-lui le lien de l’appli et le code d’invitation. Il crée son compte (nom et prénom, mot de passe) et apparaît ici comme chauffeur.</div></div>';
    o+='<div class="row"><b>🔐 Code d’invitation</b><br><span style="font-size:22px;letter-spacing:3px;font-weight:700">'+X(INV||"(aucun)")+'</span><br><button class="sm" id="invnew">Générer un nouveau code</button><div class="sub">À donner aux personnes qui doivent créer un compte. Changer le code ne déconnecte personne. Il change aussi tout seul quand tu supprimes un utilisateur.</div></div>';
    o+='<div class="row"><b>🔗 Relais pour les liens partagés</b><br><input class="in" id="rlurl" placeholder="https://xxxx.workers.dev" value="'+esc(RL)+'" style="margin:6px 0"><button class="sm" id="rlsave">Enregistrer</button><div class="sub">Permet de lire la position d’un lien partagé Google Maps (maps.app.goo.gl) ou Plans (maps.apple). Voir les explications fournies avec l’appli.</div></div>';
    o+='<div class="row"><b>💾 Sauvegarde des tournées</b><br><button class="sm" id="bkexp">Exporter (fichier)</button> <button class="sm" id="bkimp">Importer un fichier</button><input type="file" id="bkfile" accept=".json,application/json" style="display:none"><div class="sub" id="bkmsg">Exporte toutes les tournées et leurs photos dans un fichier à garder en lieu sûr. Importer remet les tournées du fichier (un fichier de départ peut aussi servir à remplir une base vide).</div></div>';
-   o+='<div class="seg"><button data-et="ch"'+(etab==="ch"?' class="on"':'')+'>Chauffeurs</button><button data-et="dk"'+(etab==="dk"?' class="on"':'')+'>Chefs de quai</button><button data-et="ed"'+(etab==="ed"?' class="on"':'')+'>Éditeurs</button></div>';
-   var any=0;ids.forEach(function(id){var p=ps[id]||{},rl=EDS.indexOf(id)>=0?"ed":DOCK.indexOf(id)>=0?"dk":"ch",me=id===uid;if(me||rl!==etab)return;any=1;var m=MB[id],isM=m!==undefined,nm=p.name||(m&&m.name)||"Personne (nom indisponible)";
+   o+='<div class="seg"><button data-et="ch"'+(etab==="ch"?' class="on"':'')+'>Chauffeurs</button><button data-et="dk"'+(etab==="dk"?' class="on"':'')+'>Chefs de quai</button><button data-et="ed"'+(etab==="ed"?' class="on"':'')+'>Éditeurs</button>'+(owner?'<button data-et="cf"'+(etab==="cf"?' class="on"':'')+'>Chefs</button>':'')+'</div>';
+   var any=0;ids.forEach(function(id){var p=ps[id]||{},rl=CHEFS.indexOf(id)>=0?"cf":EDS.indexOf(id)>=0?"ed":DOCK.indexOf(id)>=0?"dk":"ch",me=id===uid;if(me||id===ADMINID||rl!==etab)return;any=1;var m=MB[id],isM=m!==undefined,nm=p.name||(m&&m.name)||"Personne (nom indisponible)";
     o+='<div class="row"><b>'+X(nm)+'</b>'+(isM?'':' <span class="sub">(sans compte)</span>')+'<br>';
-    if(isM){if(rl!=="ed")o+='<button class="sm" data-sr="ed|'+id+'">Rendre éditeur</button> ';if(rl!=="dk")o+='<button class="sm" data-sr="dk|'+id+'">Chef de quai</button> ';if(rl!=="ch")o+='<button class="sm" data-sr="ch|'+id+'">Redevient chauffeur</button> ';
-     o+='<button class="sm" data-adm="'+id+'">👑 Nommer admin à ma place</button> <button class="sm" data-del="'+id+'" data-nm="'+esc(nm)+'" data-sl="'+esc(m.slug||FBX.slug(m.name||nm))+'" style="color:#c0392b">🗑 Supprimer</button>'}
+    if(isM){if(!owner&&rl==="cf")o+='<span class="sub">Chef : géré par l’admin.</span>';else{if(rl!=="ed")o+='<button class="sm" data-sr="ed|'+id+'">Rendre éditeur</button> ';if(rl!=="dk")o+='<button class="sm" data-sr="dk|'+id+'">Chef de quai</button> ';if(owner&&rl!=="cf")o+='<button class="sm" data-sr="cf|'+id+'">Nommer chef</button> ';if(rl!=="ch")o+='<button class="sm" data-sr="ch|'+id+'">Redevient chauffeur</button> ';
+     if(owner)o+='<button class="sm" data-adm="'+id+'">👑 Nommer admin à ma place</button> ';o+='<button class="sm" data-del="'+id+'" data-nm="'+esc(nm)+'" data-sl="'+esc(m.slug||FBX.slug(m.name||nm))+'" style="color:#c0392b">🗑 Supprimer</button>'}}
     else o+='<span class="sub">Doit d’abord créer un compte.</span>';
     o+='</div>'});
    if(!any)o+='<div class="sub">Personne pour l’instant.</div>';
    app.innerHTML=o})}).catch(function(){app.innerHTML='<div class="sub">Impossible de charger les informations.</div>'});
+  return}
+ if(id==="versions"&&adm()){
+  hd.innerHTML='<a class="back" href="#">← Toutes les tournées</a><h1>🕘 Historique et corbeille</h1><div class="sub">Réservé à l’admin et aux chefs</div>';
+  app.innerHTML='<div class="sub">Chargement…</div>';
+  db.collection("tourHistory").orderBy("at","desc").limit(60).get().then(function(sn){
+   var o='<div class="day">🗑 Corbeille (tournées supprimées)</div>';
+   o+=TRASH.length?TRASH.map(function(x){return '<div class="row"><b>'+esc(x.name)+'</b><br><span class="sub">Supprimée'+(x.byName?' par '+esc(x.byName):'')+(x.at?' · '+dtf(x.at):'')+'</span><br><button class="sm" data-rtr="'+esc(x.id)+'">Restaurer</button></div>'}).join(""):'<div class="sub">La corbeille est vide.</div>';
+   var vs=sn.docs.filter(function(d){return d.data().action!=="delete"});
+   o+='<div class="day">Versions précédentes</div><div class="sub">Une version est enregistrée avant chaque série de modifications (au plus une toutes les 10 minutes par tournée).</div>';
+   o+=vs.length?vs.map(function(d){var v=d.data();return '<div class="row"><b>'+esc(v.name||v.tour)+'</b><br><span class="sub">Avant la modification de '+esc(v.byName||"?")+' · '+dtf(v.at)+'</span><br><button class="sm" data-rv="'+d.id+'">Restaurer cette version</button> <button class="sm" data-rvx="'+d.id+'" style="color:#c0392b">Effacer</button></div>'}).join(""):'<div class="sub">Aucune version enregistrée pour l’instant.</div>';
+   app.innerHTML=o},function(){app.innerHTML='<div class="sub">Impossible de charger l’historique.</div>'});
   return}
  if(id==="reclam"){
   hd.innerHTML='<a class="back" href="#">← Accueil</a><h1>📨 Réclamations et idées</h1><div class="sub">Prévenir l’admin : un client a changé, un souci, une idée…</div>';
@@ -486,7 +514,8 @@ function render(){
   h+='</div><div style="margin-top:18px">';
   h+='<a class="chief" href="#reclam">'+(chief?'📨 Réclamations des chauffeurs':'📨 Signaler un problème ou proposer une idée')+'</a>';
   if(chief||dock)h+='<a class="chief" href="#suivi">🔒 Voir le suivi des tournées</a>';
-  if(owner)h+='<a class="chief" href="#equipe">👥 Équipe et accès (propriétaire)</a>';
+  if(adm())h+='<a class="chief" href="#equipe">👥 Équipe et accès'+(owner?' (propriétaire)':' (chef)')+'</a>';
+  if(adm())h+='<a class="chief" href="#versions">🕘 Historique et corbeille</a>';
   h+='<a class="chief" href="#histo">📅 Mon historique</a>'+fbLink()+'</div>';
   app.innerHTML=h;return}
  
@@ -527,9 +556,12 @@ document.addEventListener("change",function(e){var t=e.target;if(!t)return;if(t.
 document.addEventListener("click",function(e){var t=e.target;if(!t||!t.closest)return;
  if(t.closest("#fbin")){fbDlg();return}
  if(t.closest("#pwchg")){pwDlg();return}
- var sr=t.closest("[data-sr]");if(sr&&owner){var pr=sr.dataset.sr.split("|");setRole(pr[1],pr[0]);return}
- var dl=t.closest("[data-del]");if(dl&&owner){delUser(dl.dataset.del,dl.dataset.nm,dl.dataset.sl);return}
- if(t.closest("#rlsave")&&owner){var rv=(document.getElementById("rlurl").value||"").trim();db.doc("config/app").set({relay:rv},{merge:true}).then(function(){RELAY=rv;msg(rv?"Relais enregistré.":"Relais désactivé.")},function(){msg("Refusé.")});return}
+ var rtr=t.closest("[data-rtr]");if(rtr&&adm()){db.doc("tours/"+rtr.dataset.rtr).update({del:false}).then(function(){msg("Tournée restaurée.");render()},function(){msg("Restauration impossible.")});return}
+ var rvb=t.closest("[data-rv]");if(rvb&&adm()){askConfirm("Restaurer cette version ? La version actuelle sera elle aussi gardée dans l’historique.","Restaurer",function(){restoreVersion(rvb.dataset.rv)});return}
+ var rvx=t.closest("[data-rvx]");if(rvx&&adm()){db.doc("tourHistory/"+rvx.dataset.rvx).delete().then(render,function(){msg("Refusé.")});return}
+ var sr=t.closest("[data-sr]");if(sr&&adm()){var pr=sr.dataset.sr.split("|");setRole(pr[1],pr[0]);return}
+ var dl=t.closest("[data-del]");if(dl&&adm()){delUser(dl.dataset.del,dl.dataset.nm,dl.dataset.sl);return}
+ if(t.closest("#rlsave")&&adm()){var rv=(document.getElementById("rlurl").value||"").trim();db.doc("config/app").set({relay:rv},{merge:true}).then(function(){RELAY=rv;msg(rv?"Relais enregistré.":"Relais désactivé.")},function(){msg("Refusé.")});return}
  var sq=t.closest("[data-sq]");if(sq){var si=document.getElementById("sq");if(si){si.value=sq.dataset.sq;suiviPaint();window.scrollTo(0,0)}return}
  if(t.closest("#bkexp")){bkExport();return}
  if(t.closest("#bkimp")){document.getElementById("bkfile").click();return}
@@ -551,10 +583,10 @@ function mapLinksUpd(){var t=cur(),el=document.getElementById("mapLinks");if(!t|
  parts.forEach(function(g,k){var u="https://www.google.com/maps/dir/?api=1&travelmode=driving",dest=g[g.length-1],wp=g.slice(0,-1);if(k>0){var pv=parts[k-1];u+="&origin="+encodeURIComponent(ll(pv[pv.length-1]))}u+="&destination="+encodeURIComponent(ll(dest));if(wp.length)u+="&waypoints="+encodeURIComponent(wp.map(ll).join("|"));
   o+='<div class="btns" style="margin:6px 0"><a class="w" '+lka(u)+'>🗺️ '+(parts.length>1?'Partie '+(k+1)+' sur '+parts.length+' · ':'Itinéraire · ')+'arrêts '+D.pos[g[0].i]+' à '+D.pos[dest.i]+' ('+g.length+' clients)</a></div>'});
  if(parts.length>1)o+='<div class="sub">Google Maps accepte 10 arrêts par itinéraire : ouvre les parties l’une après l’autre.</div>';el.innerHTML=o}
-function bkExport(){var m=document.getElementById("bkmsg");m.textContent="Préparation…";db.collection("tours").get().then(function(sn){var tours=sn.docs.map(function(d){return{id:d.id,json:d.data().json}}),keys={};tours.forEach(function(r){try{JSON.parse(r.json).stops.forEach(function(s){(s[6]||[]).forEach(function(p){if(p[1]&&p[1].indexOf("fs:")===0)keys[p[1].slice(3)]=1})})}catch(x){}});
+function bkExport(){var m=document.getElementById("bkmsg");m.textContent="Préparation…";db.collection("tours").get().then(function(sn){var tours=sn.docs.map(function(d){return{id:d.id,json:d.data().json,del:d.data().del===true}}),keys={};tours.forEach(function(r){try{JSON.parse(r.json).stops.forEach(function(s){(s[6]||[]).forEach(function(p){if(p[1]&&p[1].indexOf("fs:")===0)keys[p[1].slice(3)]=1})})}catch(x){}});
  var ids=Object.keys(keys),ph={};return Promise.all(ids.map(function(id){return db.doc("photos/"+id).get().then(function(d){if(d.exists)ph[id]=d.data().d})})).then(function(){var b=new Blob([JSON.stringify({v:1,at:new Date().toISOString(),tours:tours,photos:ph})],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="sauvegarde-tournees-"+today()+".json";document.body.appendChild(a);a.click();setTimeout(function(){a.remove();URL.revokeObjectURL(a.href)},3000);m.textContent="✅ Fichier exporté ("+tours.length+" tournées, "+ids.length+" photos)."})}).catch(function(){m.textContent="Export impossible."})}
 function bkImport(f){var m=document.getElementById("bkmsg");if(!f)return;var fr=new FileReader();fr.onload=function(){var d;try{d=JSON.parse(fr.result)}catch(x){m.textContent="Fichier illisible.";return}if(!d||!d.tours){m.textContent="Ce fichier n’est pas une sauvegarde de tournées.";return}
- var ph=d.photos||{},pk=Object.keys(ph),at=new Date().toISOString(),ops=[],i=0;pk.forEach(function(k){ops.push(function(){return db.doc("photos/"+k).set({d:ph[k],at:at})})});d.tours.forEach(function(r){ops.push(function(){return db.doc("tours/"+r.id).set({json:r.json,by:uid||"",at:at})})});
+ var ph=d.photos||{},pk=Object.keys(ph),at=new Date().toISOString(),ops=[],i=0;pk.forEach(function(k){ops.push(function(){return db.doc("photos/"+k).set({d:ph[k],at:at})})});d.tours.forEach(function(r){ops.push(function(){var o={json:r.json,by:uid||"",at:at};if(r.del)o.del=true;return db.doc("tours/"+r.id).set(o)})});
  function next(){if(i>=ops.length){m.textContent="✅ Import terminé ("+d.tours.length+" tournées, "+pk.length+" photos).";return}m.textContent="Import… "+i+" / "+ops.length;ops[i++]().then(next,function(){m.textContent="Import interrompu (droits ou connexion). Réessaie."})}next()};fr.readAsText(f)}
 function pwDlg(){var d=document.createElement("div");d.id="cf";d.innerHTML='<div class="cfb"><p><b>🔑 Changer mon mot de passe</b></p><input class="in" id="pw0" type="password" placeholder="Mot de passe actuel" autocomplete="current-password" style="margin:8px 0"><input class="in" id="pw1" type="password" placeholder="Nouveau mot de passe (6 caractères minimum)" autocomplete="new-password"><div class="sub" id="pwe" style="margin-top:6px"></div><div class="btns" style="margin-top:8px"><button class="p" id="pwx" style="background:none;color:var(--text);border:2px solid var(--line)">Annuler</button><button class="p" id="pwok">Changer</button></div></div>';document.body.appendChild(d);
  d.querySelector("#pwx").onclick=function(){d.remove()};d.querySelector("#pwok").onclick=function(){var o=d.querySelector("#pw0").value,n=d.querySelector("#pw1").value,e=d.querySelector("#pwe");if(!o||n.length<6){e.textContent="Entre ton mot de passe actuel et un nouveau de 6 caractères minimum.";return}e.textContent="…";FBX.changePw(o,n).then(function(){d.remove();msg("Mot de passe changé.")},function(){e.textContent="Mot de passe actuel incorrect."})}}
@@ -572,9 +604,9 @@ function suiviPaint(){var el=document.getElementById("sres"),qi=document.getElem
   el.className="";el.innerHTML=sm.length?sm.map(function(r){var last=ev.filter(function(e){return e.tour===r.tourName&&e.pseudo===r.pseudo})[0];return '<div class="row" data-sq="'+esc(r.tourName)+'"><b>'+esc(r.tourName)+'</b> · '+esc(r.pseudo)+'<br>'+esc(r.done)+' / '+esc(r.total)+' clients'+(last?' · dernier : <b>'+esc(last.client)+'</b> à '+hh(last.at):'')+(r.done===r.total?' ✓':'')+'</div>'}).join(""):'<div class="sub">Personne n’a encore validé de client aujourd’hui.</div>';return}
  var rs=ev.filter(function(e){return nrm(e.pseudo).indexOf(q)>=0||nrm(e.tour).indexOf(q)>=0});
  el.className="";el.innerHTML=rs.length?rs.map(function(e){return '<div class="row"><b>'+esc(e.client)+'</b> · '+hh(e.at)+'<br><span class="sub">'+esc(e.pseudo)+' · '+esc(e.tour)+'</span></div>'}).join(""):'<div class="sub">Aucun résultat pour cette recherche.</div>'}
-function setRole(id,r){var a=EDS.indexOf(id),b=DOCK.indexOf(id);if(a>=0)EDS.splice(a,1);if(b>=0)DOCK.splice(b,1);if(r==="ed")EDS.push(id);if(r==="dk")DOCK.push(id);Promise.all([db.doc("config/editors").set({ids:EDS}),db.doc("config/dock").set({ids:DOCK})]).then(render,function(){msg("Refusé.")})}
-function delUser(id,nm,sl){askConfirm("Supprimer "+nm+" ? Cette personne perd l’accès tout de suite et devra recréer un compte avec le nouveau code d’invitation (il change automatiquement).","Supprimer",function(){var cd=newCode(),g=db.doc("gens/"+sl);
- g.get().then(function(sn){return g.set({n:((sn.exists&&sn.data().n)||0)+1})}).then(function(){var a=EDS.indexOf(id),b=DOCK.indexOf(id);if(a>=0)EDS.splice(a,1);if(b>=0)DOCK.splice(b,1);return Promise.all([db.doc("config/editors").set({ids:EDS}),db.doc("config/dock").set({ids:DOCK}),db.doc("config/invite").set({code:cd}),db.doc("people/"+id).delete()])}).then(function(){return db.doc("members/"+id).delete()}).then(function(){msg("Accès supprimé. Nouveau code d’invitation : "+cd);render()},function(){msg("Suppression impossible (droits ou connexion). Réessayez.")})})}
+function setRole(id,r){if(r==="cf"&&!owner)return;[EDS,DOCK,CHEFS].forEach(function(a){var k=a.indexOf(id);if(k>=0&&(a!==CHEFS||owner))a.splice(k,1)});if(r==="ed")EDS.push(id);if(r==="dk")DOCK.push(id);if(r==="cf"&&owner)CHEFS.push(id);var ps=[db.doc("config/editors").set({ids:EDS}),db.doc("config/dock").set({ids:DOCK})];if(owner)ps.push(db.doc("config/chefs").set({ids:CHEFS}));Promise.all(ps).then(render,function(){msg("Refusé.")})}
+function delUser(id,nm,sl){if(!owner&&(CHEFS.indexOf(id)>=0||id===ADMINID)){msg("Seul l’admin peut supprimer un chef.");return}askConfirm("Supprimer "+nm+" ? Cette personne perd l’accès tout de suite et devra recréer un compte avec le nouveau code d’invitation (il change automatiquement).","Supprimer",function(){var cd=newCode(),g=db.doc("gens/"+sl);
+ db.doc("members/"+id).delete().then(function(){return g.get()}).then(function(sn){return g.set({n:((sn.exists&&sn.data().n)||0)+1})}).then(function(){var ps=[],a=EDS.indexOf(id),b=DOCK.indexOf(id),c=CHEFS.indexOf(id);if(a>=0)EDS.splice(a,1);if(b>=0)DOCK.splice(b,1);ps.push(db.doc("config/editors").set({ids:EDS}),db.doc("config/dock").set({ids:DOCK}),db.doc("config/invite").set({code:cd}),db.doc("people/"+id).delete());if(c>=0&&owner){CHEFS.splice(c,1);ps.push(db.doc("config/chefs").set({ids:CHEFS}))}return Promise.all(ps)}).then(function(){msg("Accès supprimé. Nouveau code d’invitation : "+cd);render()},function(){msg("Suppression impossible (droits ou connexion). Réessayez.")})})}
 function parseCT(v){var m,f=function(x){return parseFloat(String(x).replace(",","."))},la,lo;
  if((m=v.match(/(\d{1,3})\s*°\s*(\d{1,2})\s*['′’]\s*(\d{1,2}(?:[.,]\d+)?)\s*["″”]?\s*([NS])[\s,;]*(\d{1,3})\s*°\s*(\d{1,2})\s*['′’]\s*(\d{1,2}(?:[.,]\d+)?)\s*["″”]?\s*([EOW])/i))){la=+m[1]+m[2]/60+f(m[3])/3600;lo=+m[5]+m[6]/60+f(m[7])/3600;if(/S/i.test(m[4]))la=-la;if(/[WO]/i.test(m[8]))lo=-lo;return[la,lo]}
  if((m=v.match(/(-?\d{1,3}[.,]\d+)\s*°?\s*([NS])[\s,;]*(-?\d{1,3}[.,]\d+)\s*°?\s*([EOW])/i))){la=f(m[1]);lo=f(m[3]);if(/S/i.test(m[2]))la=-Math.abs(la);if(/[WO]/i.test(m[4]))lo=-Math.abs(lo);return[la,lo]}
@@ -586,6 +618,9 @@ function applyRes(r){var set=function(a,b,c){document.getElementById("e2").value
  msg("Lien non reconnu. Colle plutôt l’adresse écrite ou les coordonnées.")}
 function resolveShort(r){if(r.url===lastShort)return;lastShort=r.url;msg("Lecture du lien…");
  fetch(RELAY.replace(/\/+$/,"")+"/?u="+encodeURIComponent(r.url)).then(function(x){return x.json()}).then(function(j){if(j&&j.ll&&isFinite(j.ll[0])&&isFinite(j.ll[1])){applyRes({ll:[+j.ll[0],+j.ll[1]],text:r.text||""});return}lastShort="";if(r.text)applyRes({text:r.text});else msg("Position introuvable dans ce lien. Colle les coordonnées ou l’adresse écrite.")},function(){lastShort="";if(r.text)applyRes({text:r.text});else msg("Relais injoignable. Colle les coordonnées ou l’adresse écrite.")})}
+function askChoice(text,label,fn){var d=document.createElement("div");d.id="cf";d.innerHTML='<div class="cfb"><p>'+esc(text)+'</p><div class="btns"><button class="p" id="cfn" style="background:none;color:var(--text);border:2px solid var(--line)">Annuler</button><button class="p" id="cfy">'+esc(label)+'</button></div></div>';document.body.appendChild(d);d.querySelector("#cfn").onclick=function(){d.remove()};d.querySelector("#cfy").onclick=function(){d.remove();fn()}}
+function autoCaps(){var s=E.s,add=[];(s[6]||[]).forEach(function(p){var c=String(p[0]||"").trim();if(c&&E.c0[p[1]]!==c&&String(s[5]||"").indexOf(c)<0)add.push(c)});if(add.length)s[5]=(s[5]?s[5]+"<br>":"")+add.map(function(c){return "- "+c}).join("<br>")}
+function adm(){return owner||chefR}
 function updSP(){var h=document.getElementById("hd");if(h)document.documentElement.style.scrollPaddingTop=(h.getBoundingClientRect().bottom+12)+"px"}
 window.addEventListener("resize",updSP);
 function cur(){return TOURS.find(function(x){return x.id===location.hash.slice(1)})}
@@ -626,7 +661,7 @@ document.addEventListener("click",function(e){
  var tg=e.target.closest("[data-tg]");if(tg){toggleEd(tg.dataset.tg);return}
  var ed=e.target.closest("[data-ed]");if(ed&&t){openEd(t,ed.dataset.ed);return}
  var p=e.target.closest("[data-ph]");
- if(p&&t){var lb=document.getElementById("lb"),o="";t.stops[p.dataset.ph-1][6].forEach(function(x){if(x[0])o+='<div class="cap">'+esc(x[0])+'</div>';o+='<img data-fs="'+esc(x[1])+'" src="'+PIMG(x[1])+'" alt="" onerror="this.style.display=\'none\'">'});document.getElementById("lbc").innerHTML=o;lb.scrollTop=0;lb.style.display="block";return}
+ if(p&&t){var lb=document.getElementById("lb"),st0=t.stops[p.dataset.ph-1],o='<div class="lbt">'+esc(unesc(st0[0]))+'</div>';st0[6].forEach(function(x){if(x[0])o+='<div class="cap">'+esc(x[0])+'</div>';o+='<img data-fs="'+esc(x[1])+'" src="'+PIMG(x[1])+'" alt="" onerror="this.style.display=\'none\'">'});document.getElementById("lbc").innerHTML=o;lb.scrollTop=0;lb.style.display="block";return}
  if(e.target.id==="lbx"||e.target.id==="lb"||e.target.id==="lbc"){document.getElementById("lb").style.display="none";return}
  if(e.target.id==="reset"&&t){askConfirm("Tout décocher et recommencer la tournée ?","Recommencer",function(){S.done[t.id]={};if(S.logs[t.id])S.logs[t.id].stops={};save();sync(t);render();window.scrollTo(0,0)});return}
 });
