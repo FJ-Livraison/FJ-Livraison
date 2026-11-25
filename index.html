@@ -74,7 +74,7 @@ main{padding:12px 16px 40px;max-width:640px;margin:auto}
 .day{font-weight:700;margin:16px 0 6px}
 .row{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px;font-size:calc(14px * var(--font-scale,1))}
 .row b{font-size:calc(15px * var(--font-scale,1))}
-#ed{position:fixed;inset:0;background:var(--bg);display:none;overflow-y:auto;z-index:130;padding:calc(14px + env(safe-area-inset-top,0px)) 16px 40px;max-width:640px;margin:auto}
+#ed{position:fixed;inset:0;background:var(--bg);display:none;overflow-y:auto;z-index:30;padding:calc(14px + env(safe-area-inset-top,0px)) 16px 40px;max-width:640px;margin:auto}
 #ed label{display:block;font-size:calc(13px * var(--font-scale,1));color:var(--muted);margin-top:10px}
 #ed .in{font-size:calc(16px * var(--font-scale,1));padding:10px;margin:4px 0}
 #ed textarea.in{min-height:120px}
@@ -123,15 +123,15 @@ main{padding:12px 16px 40px;max-width:640px;margin:auto}
 #pullRefresh.loading .pull-spinner{animation:pullspin .7s linear infinite}
 @keyframes pullspin{to{transform:rotate(360deg)}}
 
-body.fj-subpage #hd,body.fj-subpage #app,body.fj-subpage #globalMenuBtn,body.fj-subpage #globalMenu{visibility:hidden}#ed .pagebar{position:sticky;top:calc(-14px - env(safe-area-inset-top,0px));z-index:2;background:var(--bg);padding:4px 0 12px;margin-bottom:10px;border-bottom:1px solid var(--line)}#ed .pageback{border:0;background:none;color:var(--accent);font:600 16px -apple-system,system-ui,sans-serif;padding:8px 4px}\n</style>
+</style>
 </head>
 <body>
 <div id="clk"></div>
 <header id="hd"></header>
 <main id="app"></main>
 <div id="ed"></div>
-<button id="globalMenuBtn" aria-label="Ouvrir le menu" aria-expanded="false">☰</button><nav id="globalMenu" aria-label="Menu principal"></nav><div id="lb"><button id="lbx" aria-label="Retour">‹</button><div id="lbc"></div></div>
-<div id="photoFull" aria-hidden="true"><button id="photoFullClose" type="button" aria-label="Retour aux photos">‹</button><img id="photoFullImg" alt=""></div>
+<button id="globalMenuBtn" aria-label="Ouvrir le menu" aria-expanded="false">☰</button><nav id="globalMenu" aria-label="Menu principal"></nav><div id="lb"><button id="lbx" aria-label="Fermer">✕</button><div id="lbc"></div></div>
+<div id="photoFull" aria-hidden="true"><button id="photoFullClose" type="button" aria-label="Retour aux photos">✕</button><img id="photoFullImg" alt=""></div>
 <div id="pullRefresh" aria-hidden="true"><span class="pull-spinner"></span><span id="pullText">Tirer pour actualiser</span></div>
 <script>
 /* ===== CONNEXION AU SERVEUR (Firebase, gratuit) : colle ici tes 4 valeurs, voir les explications ===== */
@@ -406,14 +406,11 @@ function restoreVersion(hid){db.doc("tourHistory/"+hid).get().then(function(sn){
  return ref.get().then(function(c){var p=Promise.resolve();if(c.exists&&c.data().json&&c.data().del!==true)p=addHist(v.tour,c.data().json,"edit"," (avant restauration)");return p.then(function(){return ref.set({json:v.json,by:uid||"",at:nowIso()})})})}).then(function(){msg("Version restaurée.");render()},function(){msg("Restauration impossible.")})}
 function saveContent(){return saveTour(E.t)}
 function toggleEd(id){var i=EDS.indexOf(id);if(i<0)EDS.push(id);else EDS.splice(i,1);db.doc("config/editors").set({ids:EDS}).then(render,function(){msg("Refusé.")})}
-function pushAppPage(kind){try{history.pushState({fjAppPage:kind,at:Date.now()},"",location.href)}catch(e){}document.body.classList.add("fj-subpage")}
-function closeAppPage(kind){if(history.state&&history.state.fjAppPage===kind){history.back();return true}return false}
-function hideEditorPage(){var el=document.getElementById("ed");if(el)el.style.display="none";document.body.classList.remove("fj-subpage");E=null;ET=null;pendingEditTourId=null;render()}
 function openTourEd(id){
  pendingEditTourId=id!=="new"?id:null;
  var t=id==="new"?{id:"t"+Date.now().toString(36),name:"",depart:"",desc:"",notes:[],stops:[],order:Date.now(),cat:S.cat||"weekend",isNew:1}:TOURS.find(function(x){return x.id===id});if(!t)return;
- pushAppPage("editor");ET=t;var old=t.depart==null&&!t.isNew;
- var o='<div class="pagebar"><button type="button" class="pageback" id="edBack">‹ Retour</button><h2 style="margin:0">'+(t.isNew?"Nouvelle tournée":"Modifier la tournée")+'</h2></div>';
+ ET=t;var old=t.depart==null&&!t.isNew;
+ var o='<h2 style="margin:0">'+(t.isNew?"Nouvelle tournée":"Modifier la tournée")+'</h2>';
  o+='<label>Titre de la tournée (ex : Montluçon)</label><input class="in" id="t0" value="'+esc(unesc(t.name||""))+'">';
  o+='<label>Départ (ex : dépôt de Clermont-Ferrand)</label><input class="in" id="t1" value="'+esc(unesc(old?"dépôt de Clermont-Ferrand":t.depart||""))+'">';
  o+='<label>Description (ex : clients sur la route de…)</label><input class="in" id="t2" value="'+esc(unesc(old?String(t.sub).split(" · ")[1]||"":t.desc||""))+'">';
@@ -425,14 +422,14 @@ function openTourEd(id){
  var el=document.getElementById("ed");el.innerHTML=o;el.style.display="block"}
 function tClick(e){
  var b=e.target.closest("button");if(!b)return;var el=document.getElementById("ed");
- if(b.id==="tcancel"||b.id==="edBack"){if(!closeAppPage("editor"))hideEditorPage();return}
- if(b.id==="tdel"){if(!adm()){msg("Seuls l’admin et les chefs peuvent supprimer une tournée.");return}askConfirm("Supprimer cette tournée pour tout le monde ? Elle ira dans la corbeille et pourra être restaurée.","Supprimer",function(){var tt=ET;delTour(tt.id,tt).then(function(){if(!closeAppPage("editor"))hideEditorPage();location.hash="";render();msg("Tournée mise à la corbeille.")},function(){msg("Suppression impossible.")})});return}
+ if(b.id==="tcancel"){el.style.display="none";ET=null;render();return}
+ if(b.id==="tdel"){if(!adm()){msg("Seuls l’admin et les chefs peuvent supprimer une tournée.");return}askConfirm("Supprimer cette tournée pour tout le monde ? Elle ira dans la corbeille et pourra être restaurée.","Supprimer",function(){var tt=ET;delTour(tt.id,tt).then(function(){el.style.display="none";ET=null;location.hash="";render();msg("Tournée mise à la corbeille.")},function(){msg("Suppression impossible.")})});return}
  if(b.id==="tsave"){var g=function(i){return document.getElementById("t"+i).value.trim()},t=ET;if(!g(0)){msg("Écris le titre de la tournée.");return}
   t.name=g(0);t.cat=g(4);t.next=g(5);t.depart=g(1);t.desc=g(2);t.notes=ed2md(document.getElementById("t3")).split("\n").map(function(x){return x.trim()}).filter(Boolean);t.sub=[t.depart?"Départ "+t.depart:"",t.desc].filter(Boolean).join(" · ");var nw=t.isNew;delete t.isNew;
-  saveTour(t).then(function(){if(!closeAppPage("editor"))hideEditorPage();if(nw){if(TOURS.indexOf(t)<0)TOURS.push(t);location.hash="#"+t.id}render()})}}
-function openEd(t,i){pushAppPage("editor");pendingEditTourId=t&&t.id||null;var n=i==="new";E={t:t,i:n?-1:+i,s:n?["","","",0,0,"",[],"","","",""]:JSON.parse(JSON.stringify(t.stops[+i]))};E.c0={};(E.s[6]||[]).forEach(function(p){E.c0[p[1]]=p[0]});drawEd()}
+  saveTour(t).then(function(){el.style.display="none";ET=null;if(nw){if(TOURS.indexOf(t)<0)TOURS.push(t);location.hash="#"+t.id}render()})}}
+function openEd(t,i){pendingEditTourId=t&&t.id||null;var n=i==="new";E={t:t,i:n?-1:+i,s:n?["","","",0,0,"",[],"","","",""]:JSON.parse(JSON.stringify(t.stops[+i]))};E.c0={};(E.s[6]||[]).forEach(function(p){E.c0[p[1]]=p[0]});drawEd()}
 function drawEd(){
- var s=E.s,o='<div class="pagebar"><button type="button" class="pageback" id="edBack">‹ Retour</button><h2 style="margin:0">'+(E.i<0?"Nouvel arrêt":"Modifier l’arrêt")+'</h2></div>';
+ var s=E.s,o='<h2 style="margin:0">'+(E.i<0?"Nouvel arrêt":"Modifier l’arrêt")+'</h2>';
  o+='<label>Nom du client</label><input class="in" id="e0" value="'+esc(unesc(s[0]))+'"><label>Heure d’arrivée (ex : 2h05 à 2h10)</label><input class="in" id="e1" value="'+esc(unesc(s[1]))+'">';
  o+='<label>Adresse : écris-la ou colle un lien / une adresse copiée depuis Waze, Maps ou Plans</label><input class="in" id="e7" value="'+esc(unesc(s[7]||""))+'" placeholder="12 rue de la Gare, 03100 Montluçon">';
  o+='<label>Ville (sert à la recherche, ex : Gerzat)</label><input class="in" id="e8" value="'+esc(unesc(s[8]||""))+'">';
@@ -445,7 +442,7 @@ function drawEd(){
  if(E.i>=0)o+='<div class="btns"><button class="sm" id="edel" style="color:#c0392b">Supprimer</button></div>';
  var el=document.getElementById("ed");el.innerHTML=o;el.style.display="block"}
 function readEd(){var s=E.s,g=function(i){return document.getElementById("e"+i).value};s[0]=g(0).trim();s[1]=g(1).trim();s[2]=g(2).trim();s[3]=parseFloat(g(3))||0;s[4]=parseFloat(g(4))||0;s[7]=g(7).trim();s[8]=g(8).trim();s[9]=g(9).trim();s[10]=g(10).trim();s[5]=ed2md(document.getElementById("e5")).split("\n").join("<br>");document.querySelectorAll("[data-cap]").forEach(function(i){s[6][i.dataset.cap][0]=i.value})}
-function closeEd(){if(!closeAppPage("editor"))hideEditorPage()}
+function closeEd(){document.getElementById("ed").style.display="none";E=null;render()}
 function edClick(e){
  if(ET){tClick(e);return}
  var im=e.target.closest&&e.target.closest(".ph img");if(im){readEd();var jj=[].indexOf.call(document.querySelectorAll("#ed .ph img"),im);if(jj<0)return;askChoice("Changer cette photo ? La légende est conservée.","Changer la photo",function(){if(!asset){msg("Ajout de photo réservé aux éditeurs.");return}E.rep=jj;var ef=document.getElementById("efile");ef.multiple=false;ef.click()});return}
@@ -481,12 +478,11 @@ function applyFontSize(){document.documentElement.style.setProperty("--app-font-
 function buildGlobalMenu(){var n='<div class="menuhead">Navigation</div><a href="#reclam">'+(chief?'📨 Réclamations':'📨 Signaler un problème ou une idée')+'</a>';if(chief||dock)n+='<a href="#suivi">🔒 Suivi des tournées</a>';if(adm())n+='<a href="#equipe">👥 Équipe et accès</a><a href="#versions">🕘 Historique et corbeille</a>';n+='<a href="#histo">📅 Mon historique</a><div class="menuhead">Affichage</div><label for="fontSizeRange">Taille de la police</label><input id="fontSizeRange" type="range" min="14" max="25" step="1" value="'+appFontSize+'"><div class="fontsizeval" id="fontSizeValue">'+appFontSize+' px</div><button class="menuitem" id="fontReset">↺ Taille par défaut (16 px)</button>';if(window.FBX&&db&&FBX.signed)n+='<div class="menuhead">Compte</div><button class="menuitem" id="pwchg">🔑 Changer mon mot de passe</button><button class="menuitem" id="fbout">🔓 Se déconnecter ('+X(FBX.name)+')</button>';var m=document.getElementById("globalMenu");if(m)m.innerHTML=n;applyFontSize()}
 function setPhotoZoom(z){photoZoom=clp(z,.5,4);document.querySelectorAll("#lbc img").forEach(function(im){im.style.transform="scale("+photoZoom+")";im.style.maxWidth=photoZoom>1?"none":"100%";im.style.maxHeight=photoZoom>1?"none":"78vh"})}
 
-function closeGalleryPage(fromPop){var lb=document.getElementById("lb");if(!fromPop&&closeAppPage("gallery"))return;if(lb)lb.style.display="none";document.body.style.overflow="";if(!document.getElementById("photoFull").classList.contains("open"))document.body.classList.remove("fj-subpage")}
 /* Visionneuse photo : zoom tactile centré sous les doigts et déplacement simultané. */
 var fullZoom=1,fullX=0,fullY=0,fullPointers={},fullGesture=null;
 function paintFullPhoto(){var im=document.getElementById("photoFullImg");if(im)im.style.transform="translate3d("+fullX+"px,"+fullY+"px,0) scale("+fullZoom+")"}
-function openFullPhoto(src,alt){pushAppPage("fullphoto");var v=document.getElementById("photoFull"),im=document.getElementById("photoFullImg");im.src=src;im.alt=alt||"Photo agrandie";fullZoom=1;fullX=0;fullY=0;fullPointers={};fullGesture=null;paintFullPhoto();v.classList.add("open");v.setAttribute("aria-hidden","false");document.body.style.overflow="hidden"}
-function closeFullPhoto(fromPop){if(!fromPop&&closeAppPage("fullphoto"))return;var v=document.getElementById("photoFull");v.classList.remove("open");v.setAttribute("aria-hidden","true");document.body.style.overflow="";fullPointers={};fullGesture=null;if(!document.getElementById("lb")||getComputedStyle(document.getElementById("lb")).display==="none")document.body.classList.remove("fj-subpage")}
+function openFullPhoto(src,alt){var v=document.getElementById("photoFull"),im=document.getElementById("photoFullImg");im.src=src;im.alt=alt||"Photo agrandie";fullZoom=1;fullX=0;fullY=0;fullPointers={};fullGesture=null;paintFullPhoto();v.classList.add("open");v.setAttribute("aria-hidden","false");document.body.style.overflow="hidden"}
+function closeFullPhoto(){var v=document.getElementById("photoFull");v.classList.remove("open");v.setAttribute("aria-hidden","true");document.body.style.overflow="";fullPointers={};fullGesture=null}
 document.getElementById("photoFullClose").addEventListener("click",closeFullPhoto);
 document.getElementById("photoFull").addEventListener("click",function(e){if(e.target===this)closeFullPhoto()});
 document.getElementById("photoFull").addEventListener("wheel",function(e){if(!this.classList.contains("open"))return;e.preventDefault();var rect=this.getBoundingClientRect(),cx=e.clientX-rect.left-rect.width/2,cy=e.clientY-rect.top-rect.height/2,old=fullZoom,nz=clp(old+(e.deltaY<0?.2:-.2),1,5),ratio=nz/old;fullX=cx-(cx-fullX)*ratio;fullY=cy-(cy-fullY)*ratio;fullZoom=nz;paintFullPhoto()},{passive:false});
@@ -779,22 +775,34 @@ document.addEventListener("click",function(e){
  var tg=e.target.closest("[data-tg]");if(tg){toggleEd(tg.dataset.tg);return}
  var ed=e.target.closest("[data-ed]");if(ed&&t){openEd(t,ed.dataset.ed);return}
  var p=e.target.closest("[data-ph]");
- if(p&&t){var lb=document.getElementById("lb"),st0=t.stops[p.dataset.ph-1],o='<div class="lbt">'+esc(unesc(st0[0]))+'</div>';st0[6].forEach(function(x){if(x[0])o+='<div class="cap">'+esc(x[0])+'</div>';o+='<img class="photozoom" data-fs="'+esc(x[1])+'" src="'+PIMG(x[1])+'" alt="" onerror="this.style.display=\'none\'">'});document.getElementById("lbc").innerHTML=o;photoZoom=1;setPhotoZoom(1);lb.scrollTop=0;lb.style.display="block";pushAppPage("gallery");document.body.classList.add("fj-subpage");return}
+ if(p&&t){var lb=document.getElementById("lb"),st0=t.stops[p.dataset.ph-1],o='<div class="lbt">'+esc(unesc(st0[0]))+'</div>';st0[6].forEach(function(x){if(x[0])o+='<div class="cap">'+esc(x[0])+'</div>';o+='<img class="photozoom" data-fs="'+esc(x[1])+'" src="'+PIMG(x[1])+'" alt="" onerror="this.style.display=\'none\'">'});document.getElementById("lbc").innerHTML=o;photoZoom=1;setPhotoZoom(1);lb.scrollTop=0;lb.style.display="block";return}
  var galleryImg=e.target.closest("#lbc img.photozoom");
  if(galleryImg){openFullPhoto(galleryImg.currentSrc||galleryImg.src,galleryImg.alt);return}
- if(e.target.id==="lbx"||e.target.id==="lb"){closeGalleryPage();return}
+ if(e.target.id==="lbx"||e.target.id==="lb"){closeFullPhoto();document.getElementById("lb").style.display="none";document.body.style.overflow="";return}
  if(e.target.id==="reset"&&t){askConfirm("Tout décocher et recommencer la tournée ?","Recommencer",function(){S.done[t.id]={};if(S.logs[t.id])S.logs[t.id].stops={};save();sync(t);render();window.scrollTo(0,0)});return}
 });
-/* Navigation native : iOS gère son geste de retour. Les vues secondaires ont leur propre entrée d’historique. */
-function closeTopAppPageFromHistory(){
- var full=document.getElementById("photoFull"),lb=document.getElementById("lb"),ed=document.getElementById("ed");
- if(full&&full.classList.contains("open")){closeFullPhoto(true);return}
- if(lb&&getComputedStyle(lb).display!=="none"){closeGalleryPage(true);return}
- if(ed&&getComputedStyle(ed).display!=="none"){ed.style.display="none";document.body.classList.remove("fj-subpage");E=null;ET=null;pendingEditTourId=null;render();return}
+/* Historique interne + geste retour depuis le bord gauche de l’écran. */
+var appRouteHistory=[location.hash],backSwipe=null;
+function closeGlobalMenuNow(){var m=document.getElementById("globalMenu"),b=document.getElementById("globalMenuBtn");if(m){m.classList.remove("open");m.style.display="none"}if(b)b.setAttribute("aria-expanded","false")}
+function goAppBack(){
+ closeGlobalMenuNow();
+ var full=document.getElementById("photoFull");
+ if(full&&full.classList.contains("open")){closeFullPhoto();return true}
+ var lb=document.getElementById("lb");
+ if(lb&&getComputedStyle(lb).display!=="none"){lb.style.display="none";document.body.style.overflow="";return true}
+ var ed=document.getElementById("ed");
+ if(ed&&getComputedStyle(ed).display!=="none"){ed.style.display="none";E=null;ET=null;var parentTour=pendingEditTourId;pendingEditTourId=null;if(parentTour&&TOURS.some(function(x){return x.id===parentTour})&&location.hash!=="#"+parentTour){location.hash="#"+parentTour;return true}render();return true}
+ var current=location.hash;
+ if(appRouteHistory.length>1){appRouteHistory.pop();var previous=appRouteHistory[appRouteHistory.length-1];if(previous!==current){location.hash=previous;return true}}
+ if(current){location.hash="";return true}
+ return false
 }
-window.addEventListener("popstate",function(){closeTopAppPageFromHistory()});
-document.getElementById("globalMenu").addEventListener("click",function(e){if(e.target.closest("a"))closeGlobalMenuNow()});
- window.addEventListener("hashchange",function(){closeGlobalMenuNow();mapFs(false);render();window.scrollTo(0,0)});
+/* Geste retour iPhone : écoute en capture, même si le doigt démarre sur un élément interactif près du bord. */
+document.addEventListener("touchstart",function(e){if(e.touches.length!==1){backSwipe=null;return}var x=e.touches[0].clientX,y=e.touches[0].clientY;backSwipe=x<=38?{x:x,y:y,active:false}:null},{passive:true,capture:true});
+document.addEventListener("touchmove",function(e){if(!backSwipe||e.touches.length!==1)return;var dx=e.touches[0].clientX-backSwipe.x,dy=e.touches[0].clientY-backSwipe.y;if(Math.abs(dy)>Math.abs(dx)*0.9){backSwipe=null;return}if(dx>12){backSwipe.active=true;if(e.cancelable)e.preventDefault()}},{passive:false,capture:true});
+document.addEventListener("touchend",function(e){if(!backSwipe)return;var c=e.changedTouches&&e.changedTouches[0];if(!c){backSwipe=null;return}var dx=c.clientX-backSwipe.x,dy=c.clientY-backSwipe.y,go=backSwipe.active&&dx>55&&Math.abs(dy)<Math.max(70,dx*.7);backSwipe=null;if(go){e.preventDefault();goAppBack()}},{passive:false,capture:true});
+document.addEventListener("touchcancel",function(){backSwipe=null},{passive:true});
+window.addEventListener("hashchange",function(){closeGlobalMenuNow();var next=location.hash,last=appRouteHistory[appRouteHistory.length-1];if(next!==last){if(appRouteHistory.length>1&&next===appRouteHistory[appRouteHistory.length-2])appRouteHistory.pop();else appRouteHistory.push(next)}mapFs(false);render();window.scrollTo(0,0)});
 document.addEventListener("visibilitychange",function(){if(!document.hidden&&S.date!==today())render()});
 setInterval(function(){if(S.date!==today())render()},60000);
 </script>
