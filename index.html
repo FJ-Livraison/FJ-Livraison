@@ -112,6 +112,20 @@ main{padding:12px 16px 40px;max-width:640px;margin:auto}
 #mfs .mcs{top:calc(10px + env(safe-area-inset-top,0px));right:calc(10px + env(safe-area-inset-right,0px))}
 #mfs .att{bottom:calc(2px + env(safe-area-inset-bottom,0px))}
 #mfs .sc{bottom:calc(4px + env(safe-area-inset-bottom,0px))}
+
+/* Affichage plein écran d'une photo choisie dans la galerie de l'application */
+#photoFull{display:none;position:fixed;inset:0;z-index:120;background:rgba(0,0,0,.98);align-items:center;justify-content:center;overflow:hidden;touch-action:none}
+#photoFull.open{display:flex}
+#photoFullImg{display:block;max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;transform-origin:center center;user-select:none;-webkit-user-drag:none;touch-action:none}
+#photoFullClose{position:fixed;top:calc(12px + env(safe-area-inset-top,0px));right:12px;z-index:123;width:48px;height:48px;border:0;border-radius:50%;background:rgba(255,255,255,.24);color:#fff;font-size:28px;line-height:1}
+#photoFullTools{position:fixed;top:calc(12px + env(safe-area-inset-top,0px));left:12px;z-index:123;display:flex;gap:7px}
+#photoFullTools button{width:44px;height:44px;border:0;border-radius:10px;background:rgba(255,255,255,.24);color:#fff;font-size:24px}
+#pullRefresh{position:fixed;top:calc(env(safe-area-inset-top,0px) + 4px);left:50%;transform:translate(-50%,-70px);z-index:200;display:flex;align-items:center;gap:9px;padding:9px 14px;border-radius:24px;background:var(--card);color:var(--text);box-shadow:0 2px 12px #0004;font-size:13px;pointer-events:none;transition:transform .15s}
+#pullRefresh.visible{transform:translate(-50%,8px)}
+.pull-spinner{width:18px;height:18px;border:2px solid var(--line);border-top-color:var(--accent);border-radius:50%;display:inline-block}
+#pullRefresh.loading .pull-spinner{animation:pullspin .7s linear infinite}
+@keyframes pullspin{to{transform:rotate(360deg)}}
+
 </style>
 </head>
 <body>
@@ -120,6 +134,8 @@ main{padding:12px 16px 40px;max-width:640px;margin:auto}
 <main id="app"></main>
 <div id="ed"></div>
 <button id="globalMenuBtn" aria-label="Ouvrir le menu" aria-expanded="false">☰</button><nav id="globalMenu" aria-label="Menu principal"></nav><div id="lb"><div id="lbtools"><button id="lbminus" aria-label="Dézoomer">−</button><button id="lbplus" aria-label="Zoomer">＋</button><button id="lbreset" aria-label="Réinitialiser le zoom">↺</button></div><button id="lbx" aria-label="Fermer">✕</button><div id="lbc"></div></div>
+<div id="photoFull" aria-hidden="true"><button id="photoFullClose" type="button" aria-label="Retour aux photos">✕</button><div id="photoFullTools"><button id="photoFullMinus" type="button" aria-label="Dézoomer">−</button><button id="photoFullPlus" type="button" aria-label="Zoomer">＋</button><button id="photoFullReset" type="button" aria-label="Réinitialiser le zoom">↺</button></div><img id="photoFullImg" alt=""></div>
+<div id="pullRefresh" aria-hidden="true"><span class="pull-spinner"></span><span id="pullText">Tirer pour actualiser</span></div>
 <script>
 /* ===== CONNEXION AU SERVEUR (Firebase, gratuit) : colle ici tes 4 valeurs, voir les explications ===== */
 window.FB_CONFIG={apiKey:"AIzaSyASnH9ueUCkaPDT_oAxITUwlPlUfr5oNrw",authDomain:"fj-livraison-48317.firebaseapp.com",projectId:"fj-livraison-48317",storageBucket:"fj-livraison-48317.firebasestorage.app",messagingSenderId:"341623447872",appId:"1:341623447872:web:ed9910677a63b3219f9aa5"};
@@ -463,6 +479,31 @@ function saveFontPreference(){try{localStorage.setItem(fontUserKey||currentFontK
 function applyFontSize(){document.documentElement.style.setProperty("--app-font-size",appFontSize+"px");document.documentElement.style.setProperty("--font-scale",String(appFontSize/16));var v=document.getElementById("fontSizeValue");if(v)v.textContent=appFontSize+" px"}
 function buildGlobalMenu(){var n='<div class="menuhead">Navigation</div><a href="#">🏠 Accueil / Tournées</a><a href="#reclam">'+(chief?'📨 Réclamations':'📨 Signaler un problème ou une idée')+'</a>';if(chief||dock)n+='<a href="#suivi">🔒 Suivi des tournées</a>';if(adm())n+='<a href="#equipe">👥 Équipe et accès</a><a href="#versions">🕘 Historique et corbeille</a>';n+='<a href="#histo">📅 Mon historique</a><div class="menuhead">Affichage</div><label for="fontSizeRange">Taille de la police</label><input id="fontSizeRange" type="range" min="14" max="25" step="1" value="'+appFontSize+'"><div class="fontsizeval" id="fontSizeValue">'+appFontSize+' px</div><button class="menuitem" id="fontReset">↺ Taille par défaut (16 px)</button>';if(window.FBX&&db&&FBX.signed)n+='<div class="menuhead">Compte</div><button class="menuitem" id="pwchg">🔑 Changer mon mot de passe</button><button class="menuitem" id="fbout">🔓 Se déconnecter ('+X(FBX.name)+')</button>';var m=document.getElementById("globalMenu");if(m)m.innerHTML=n;applyFontSize()}
 function setPhotoZoom(z){photoZoom=clp(z,.5,4);document.querySelectorAll("#lbc img").forEach(function(im){im.style.transform="scale("+photoZoom+")";im.style.maxWidth=photoZoom>1?"none":"100%";im.style.maxHeight=photoZoom>1?"none":"78vh"})}
+
+/* Visionneuse photo : la galerie et ses légendes restent ouvertes derrière. */
+var fullZoom=1,fullX=0,fullY=0,fullPointers={},fullPinchDist=0,fullPinchZoom=1,fullDrag=null;
+function paintFullPhoto(){var im=document.getElementById("photoFullImg");if(im)im.style.transform="translate("+fullX+"px,"+fullY+"px) scale("+fullZoom+")"}
+function setFullPhotoZoom(z){photoZoom=fullZoom=clp(z,1,5);if(fullZoom===1){fullX=0;fullY=0}paintFullPhoto()}
+function openFullPhoto(src,alt){var v=document.getElementById("photoFull"),im=document.getElementById("photoFullImg");im.src=src;im.alt=alt||"Photo agrandie";fullZoom=1;fullX=0;fullY=0;fullPointers={};paintFullPhoto();v.classList.add("open");v.setAttribute("aria-hidden","false");document.body.style.overflow="hidden"}
+function closeFullPhoto(){var v=document.getElementById("photoFull");v.classList.remove("open");v.setAttribute("aria-hidden","true");document.body.style.overflow="";fullPointers={};fullDrag=null}
+document.getElementById("photoFullClose").addEventListener("click",closeFullPhoto);
+document.getElementById("photoFullPlus").addEventListener("click",function(){setFullPhotoZoom(fullZoom+.25)});
+document.getElementById("photoFullMinus").addEventListener("click",function(){setFullPhotoZoom(fullZoom-.25)});
+document.getElementById("photoFullReset").addEventListener("click",function(){setFullPhotoZoom(1)});
+document.getElementById("photoFull").addEventListener("click",function(e){if(e.target===this)closeFullPhoto()});
+document.getElementById("photoFull").addEventListener("wheel",function(e){if(!this.classList.contains("open"))return;e.preventDefault();setFullPhotoZoom(fullZoom+(e.deltaY<0?.2:-.2))},{passive:false});
+var fullEl=document.getElementById("photoFull");
+fullEl.addEventListener("pointerdown",function(e){if(e.target.id!=="photoFullImg")return;e.preventDefault();try{this.setPointerCapture(e.pointerId)}catch(x){}fullPointers[e.pointerId]={x:e.clientX,y:e.clientY};var ids=Object.keys(fullPointers);if(ids.length===2){var a=fullPointers[ids[0]],b=fullPointers[ids[1]];fullPinchDist=Math.hypot(a.x-b.x,a.y-b.y);fullPinchZoom=fullZoom}else if(ids.length===1){fullDrag={x:e.clientX,y:e.clientY,px:fullX,py:fullY}}});
+fullEl.addEventListener("pointermove",function(e){if(!fullPointers[e.pointerId])return;fullPointers[e.pointerId]={x:e.clientX,y:e.clientY};var ids=Object.keys(fullPointers);if(ids.length===2){var a=fullPointers[ids[0]],b=fullPointers[ids[1]],d=Math.hypot(a.x-b.x,a.y-b.y);if(fullPinchDist>0)setFullPhotoZoom(fullPinchZoom*d/fullPinchDist)}else if(ids.length===1&&fullZoom>1&&fullDrag){fullX=fullDrag.px+e.clientX-fullDrag.x;fullY=fullDrag.py+e.clientY-fullDrag.y;paintFullPhoto()}});
+["pointerup","pointercancel","lostpointercapture"].forEach(function(ev){fullEl.addEventListener(ev,function(e){delete fullPointers[e.pointerId];if(Object.keys(fullPointers).length<2)fullPinchDist=0;if(!Object.keys(fullPointers).length)fullDrag=null})});
+document.addEventListener("keydown",function(e){if(e.key==="Escape"&&document.getElementById("photoFull").classList.contains("open"))closeFullPhoto()});
+/* Actualisation par glissement vers le bas, uniquement depuis le haut de la page. */
+(function(){var startY=0,tracking=false,refreshing=false,threshold=88,indicator=document.getElementById("pullRefresh"),label=document.getElementById("pullText");
+document.addEventListener("touchstart",function(e){if(refreshing||e.touches.length!==1||document.getElementById("photoFull").classList.contains("open")||document.getElementById("lb").style.display==="block")return;if(window.scrollY<=2){startY=e.touches[0].clientY;tracking=true}},{passive:true});
+document.addEventListener("touchmove",function(e){if(!tracking||refreshing)return;var dy=e.touches[0].clientY-startY;if(dy>0){indicator.classList.add("visible");indicator.style.transform="translate(-50%,"+Math.min(18,dy*.22-18)+"px)";label.textContent=dy>threshold?"Relâcher pour actualiser":"Tirer pour actualiser";if(dy>8)e.preventDefault()}},{passive:false});
+document.addEventListener("touchend",function(e){if(!tracking)return;var dy=e.changedTouches[0].clientY-startY;tracking=false;if(dy>threshold&&!refreshing){refreshing=true;indicator.classList.add("loading","visible");indicator.style.transform="translate(-50%,8px)";label.textContent="Actualisation…";setTimeout(function(){location.reload()},450)}else{indicator.classList.remove("visible");indicator.style.transform="";label.textContent="Tirer pour actualiser"}},{passive:true});
+document.addEventListener("touchcancel",function(){tracking=false;indicator.classList.remove("visible");indicator.style.transform=""},{passive:true});})();
+
 document.addEventListener("click",function(e){if(e.target.closest("#globalMenuBtn")){var m=document.getElementById("globalMenu"),b=document.getElementById("globalMenuBtn");m.classList.toggle("open");b.setAttribute("aria-expanded",m.classList.contains("open")?"true":"false");return}if(e.target.closest("#fontReset")){appFontSize=16;saveFontPreference();applyFontSize();var r=document.getElementById("fontSizeRange");if(r)r.value=16;return}if(e.target.closest("#pwchg")){pwDlg();return}if(e.target.closest("#fbout")){askConfirm("Se déconnecter de l’application ?","Déconnexion",function(){FBX.logout().then(function(){location.reload()})});return}if(e.target.closest("#lbplus")){setPhotoZoom(photoZoom+.25);return}if(e.target.closest("#lbminus")){setPhotoZoom(photoZoom-.25);return}if(e.target.closest("#lbreset")){setPhotoZoom(1);return}});
 document.addEventListener("input",function(e){if(e.target.id==="fontSizeRange"){appFontSize=+e.target.value;saveFontPreference();applyFontSize()}});
 function render(){
@@ -711,10 +752,12 @@ document.addEventListener("click",function(e){
  var ed=e.target.closest("[data-ed]");if(ed&&t){openEd(t,ed.dataset.ed);return}
  var p=e.target.closest("[data-ph]");
  if(p&&t){var lb=document.getElementById("lb"),st0=t.stops[p.dataset.ph-1],o='<div class="lbt">'+esc(unesc(st0[0]))+'</div>';st0[6].forEach(function(x){if(x[0])o+='<div class="cap">'+esc(x[0])+'</div>';o+='<img class="photozoom" data-fs="'+esc(x[1])+'" src="'+PIMG(x[1])+'" alt="" onerror="this.style.display=\'none\'">'});document.getElementById("lbc").innerHTML=o;photoZoom=1;setPhotoZoom(1);lb.scrollTop=0;lb.style.display="block";return}
- if(e.target.id==="lbx"||e.target.id==="lb"){document.getElementById("lb").style.display="none";return}
+ var galleryImg=e.target.closest("#lbc img.photozoom");
+ if(galleryImg){openFullPhoto(galleryImg.currentSrc||galleryImg.src,galleryImg.alt);return}
+ if(e.target.id==="lbx"||e.target.id==="lb"){closeFullPhoto();document.getElementById("lb").style.display="none";document.body.style.overflow="";return}
  if(e.target.id==="reset"&&t){askConfirm("Tout décocher et recommencer la tournée ?","Recommencer",function(){S.done[t.id]={};if(S.logs[t.id])S.logs[t.id].stops={};save();sync(t);render();window.scrollTo(0,0)});return}
 });
-document.getElementById("lbc").addEventListener("wheel",function(e){if(document.getElementById("lb").style.display!=="block")return;e.preventDefault();setPhotoZoom(photoZoom+(e.deltaY<0?.15:-.15))},{passive:false});document.getElementById("lbc").addEventListener("dblclick",function(e){if(e.target.tagName==="IMG")setPhotoZoom(photoZoom>1?1:2)});window.addEventListener("hashchange",function(){var m=document.getElementById("globalMenu");if(m)m.classList.remove("open");mapFs(false);render();window.scrollTo(0,0)});
+window.addEventListener("hashchange",function(){var m=document.getElementById("globalMenu");if(m)m.classList.remove("open");mapFs(false);render();window.scrollTo(0,0)});
 document.addEventListener("visibilitychange",function(){if(!document.hidden&&S.date!==today())render()});
 setInterval(function(){if(S.date!==today())render()},60000);
 </script>
