@@ -523,7 +523,7 @@ document.addEventListener("touchmove",function(e){if(!tracking||refreshing)retur
 document.addEventListener("touchend",function(e){if(!tracking)return;var dy=e.changedTouches[0].clientY-startY;tracking=false;if(dy>threshold&&!refreshing){refreshing=true;indicator.classList.add("loading","visible");indicator.style.transform="translate(-50%,8px)";label.textContent="Actualisation…";setTimeout(function(){location.reload()},450)}else{indicator.classList.remove("visible");indicator.style.transform="";label.textContent="Tirer pour actualiser"}},{passive:true});
 document.addEventListener("touchcancel",function(){tracking=false;indicator.classList.remove("visible");indicator.style.transform=""},{passive:true});})();
 
-document.addEventListener("click",function(e){var m=document.getElementById("globalMenu"),b=document.getElementById("globalMenuBtn");if(e.target.closest("#globalMenu a")){closeGlobalMenuNow();if(b)b.style.display="none";return}if(e.target.closest("#globalMenuBtn")){m.classList.toggle("open");b.setAttribute("aria-expanded",m.classList.contains("open")?"true":"false");return}if(m&&m.classList.contains("open")&&!e.target.closest("#globalMenu")){m.classList.remove("open");if(b)b.setAttribute("aria-expanded","false")}if(e.target.closest("#fontReset")){appFontSize=16;saveFontPreference();applyFontSize();var r=document.getElementById("fontSizeRange");if(r)r.value=16;return}if(e.target.closest("#pwchg")){pwDlg();return}if(e.target.closest("#fbout")){askConfirm("Se déconnecter de l’application ?","Déconnexion",function(){FBX.logout().then(function(){location.reload()})});return}});
+document.addEventListener("click",function(e){var m=document.getElementById("globalMenu"),b=document.getElementById("globalMenuBtn");if(e.target.closest("#globalMenu a")){closeGlobalMenuNow();if(b)b.style.display="none";return}if(e.target.closest("#globalMenuBtn")){var opening=!m.classList.contains("open");m.style.display=opening?"block":"none";m.classList.toggle("open",opening);b.setAttribute("aria-expanded",opening?"true":"false");return}if(m&&m.classList.contains("open")&&!e.target.closest("#globalMenu")){m.classList.remove("open");if(b)b.setAttribute("aria-expanded","false")}if(e.target.closest("#fontReset")){appFontSize=16;saveFontPreference();applyFontSize();var r=document.getElementById("fontSizeRange");if(r)r.value=16;return}if(e.target.closest("#pwchg")){pwDlg();return}if(e.target.closest("#fbout")){askConfirm("Se déconnecter de l’application ?","Déconnexion",function(){FBX.logout().then(function(){location.reload()})});return}});
 document.addEventListener("input",function(e){if(e.target.id==="fontSizeRange"){appFontSize=+e.target.value;saveFontPreference();applyFontSize()}});
 function render(){
  newDay();
@@ -534,7 +534,7 @@ function render(){
  var routeId=location.hash.slice(1),isTour=TOURS.some(function(x){return x.id===routeId});
  var showHomeMenu=!!S.pseudo&&!routeId&&!isTour;
  if(menuBtn)menuBtn.style.display=showHomeMenu?"block":"none";
- if(menuNav&&!showHomeMenu){menuNav.classList.remove("open");if(menuBtn)menuBtn.setAttribute("aria-expanded","false");}
+ if(menuNav){if(showHomeMenu){menuNav.style.display="none"}else{menuNav.classList.remove("open");menuNav.style.display="none";if(menuBtn)menuBtn.setAttribute("aria-expanded","false");}}
  if(!S.pseudo){
   hd.innerHTML='<h1>🥖 Tournées de nuit</h1><div class="sub">Bienvenue</div>';
   app.innerHTML='<p><b>Comment tu t’appelles ?</b><br><span class="sub">Ton pseudo sera enregistré sur ce téléphone et associé à tes tournées.</span></p><input class="in" id="ps" maxlength="30" placeholder="Prénom ou pseudo" autocomplete="off"><button class="go" id="okp">Commencer</button>';return}
@@ -783,7 +783,7 @@ document.addEventListener("click",function(e){
 });
 /* Historique interne + geste retour depuis le bord gauche de l’écran. */
 var appRouteHistory=[location.hash],backSwipe=null;
-function closeGlobalMenuNow(){var m=document.getElementById("globalMenu"),b=document.getElementById("globalMenuBtn");if(m)m.classList.remove("open");if(b)b.setAttribute("aria-expanded","false")}
+function closeGlobalMenuNow(){var m=document.getElementById("globalMenu"),b=document.getElementById("globalMenuBtn");if(m){m.classList.remove("open");m.style.display="none"}if(b)b.setAttribute("aria-expanded","false")}
 function goAppBack(){
  closeGlobalMenuNow();
  var full=document.getElementById("photoFull");
@@ -797,9 +797,10 @@ function goAppBack(){
  if(current){location.hash="";return true}
  return false
 }
-document.addEventListener("touchstart",function(e){if(e.touches.length!==1)return;var t=e.target;if(t.closest("button,a,.grip,.rm,[data-no-back-swipe]"))return;var x=e.touches[0].clientX;if(x<=28)backSwipe={x:x,y:e.touches[0].clientY,active:false};else backSwipe=null},{passive:true});
-document.addEventListener("touchmove",function(e){if(!backSwipe||e.touches.length!==1)return;var dx=e.touches[0].clientX-backSwipe.x,dy=e.touches[0].clientY-backSwipe.y;if(Math.abs(dy)>Math.abs(dx)*.8){backSwipe=null;return}if(dx>18){backSwipe.active=true;if(e.cancelable)e.preventDefault()}},{passive:false});
-document.addEventListener("touchend",function(e){if(!backSwipe)return;var dx=e.changedTouches[0].clientX-backSwipe.x,dy=e.changedTouches[0].clientY-backSwipe.y,go=backSwipe.active&&dx>75&&Math.abs(dy)<Math.max(65,dx*.65);backSwipe=null;if(go)goAppBack()},{passive:true});
+/* Geste retour iPhone : écoute en capture, même si le doigt démarre sur un élément interactif près du bord. */
+document.addEventListener("touchstart",function(e){if(e.touches.length!==1){backSwipe=null;return}var x=e.touches[0].clientX,y=e.touches[0].clientY;backSwipe=x<=38?{x:x,y:y,active:false}:null},{passive:true,capture:true});
+document.addEventListener("touchmove",function(e){if(!backSwipe||e.touches.length!==1)return;var dx=e.touches[0].clientX-backSwipe.x,dy=e.touches[0].clientY-backSwipe.y;if(Math.abs(dy)>Math.abs(dx)*0.9){backSwipe=null;return}if(dx>12){backSwipe.active=true;if(e.cancelable)e.preventDefault()}},{passive:false,capture:true});
+document.addEventListener("touchend",function(e){if(!backSwipe)return;var c=e.changedTouches&&e.changedTouches[0];if(!c){backSwipe=null;return}var dx=c.clientX-backSwipe.x,dy=c.clientY-backSwipe.y,go=backSwipe.active&&dx>55&&Math.abs(dy)<Math.max(70,dx*.7);backSwipe=null;if(go){e.preventDefault();goAppBack()}},{passive:false,capture:true});
 document.addEventListener("touchcancel",function(){backSwipe=null},{passive:true});
 window.addEventListener("hashchange",function(){closeGlobalMenuNow();var next=location.hash,last=appRouteHistory[appRouteHistory.length-1];if(next!==last){if(appRouteHistory.length>1&&next===appRouteHistory[appRouteHistory.length-2])appRouteHistory.pop();else appRouteHistory.push(next)}mapFs(false);render();window.scrollTo(0,0)});
 document.addEventListener("visibilitychange",function(){if(!document.hidden&&S.date!==today())render()});
