@@ -168,7 +168,7 @@ function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
 function newDay(){if(S.date!==today()){S.date=today();S.done={};S.logs={};save();return true}return false}
 newDay();
 /* Suivi partagé (si disponible) */
-var db=null,uid=null,chief=false,owner=false,ready=false,asset=null,E=null,ET=null,UNS=null,EDS=[],DOCK=[],CHEFS=[],chefR=false,ADMINID="",dock=false,RELAY="",SUNSUB=null,SDATA=null,BASE=null,q=Promise.resolve(),syncOk=null;
+var db=null,uid=null,chief=false,owner=false,ready=false,asset=null,E=null,ET=null,UNS=null,EDS=[],DOCK=[],CHEFS=[],CTN=0,CTUN=null,chefR=false,ADMINID="",dock=false,RELAY="",SUNSUB=null,SDATA=null,BASE=null,q=Promise.resolve(),syncOk=null;
 function sync(t){
  if(!db||!uid||!S.pseudo)return;var l=S.logs[t.id];if(!l)return;
  S.hist=S.hist||{};
@@ -230,9 +230,9 @@ async function boot(){
     db.doc("config/dock").onSnapshot(function(sn){DOCK=(sn.exists&&sn.data().ids)||[];dock=DOCK.indexOf(uid)>=0;if(ready&&!E&&!ET)render()},function(){});
     db.doc("config/app").onSnapshot(function(sn){RELAY=(sn.exists&&sn.data().relay)||""},function(){});
     if(!owner)db.doc("members/"+uid).onSnapshot(function(sn){if(!sn.exists&&!sn.metadata.fromCache&&window.FBX)FBX.logout().then(function(){location.reload()})},function(){});
-    db.doc("config/chefs").onSnapshot(function(sn){CHEFS=(sn.exists&&sn.data().ids)||[];chefR=CHEFS.indexOf(uid)>=0;chief=owner||chefR||EDS.indexOf(uid)>=0;if(ready&&!E&&!ET)render()},function(){});
+    db.doc("config/chefs").onSnapshot(function(sn){CHEFS=(sn.exists&&sn.data().ids)||[];chefR=CHEFS.indexOf(uid)>=0;chief=owner||chefR||EDS.indexOf(uid)>=0;if(adm()&&!CTUN)CTUN=db.collection("clientTrash").onSnapshot(function(sn2){CTN=sn2.size;if(ready&&!E&&!ET)render()},function(){});if(ready&&!E&&!ET)render()},function(){});
     db.doc("config/editors").onSnapshot(function(sn){EDS=(sn.exists&&sn.data().ids)||[];chief=owner||chefR||EDS.indexOf(uid)>=0;if(ready&&!E&&!ET)render()},function(){});
-    db.collection("tours").onSnapshot(function(sn){var m={};BASE.forEach(function(t){m[t.id]=t});TRASH=[];sn.docs.forEach(function(d){var dd=d.data();if(dd.del===true){TRASH.push({id:d.id,name:jname(dd.json)||d.id,byName:dd.delByName||"",at:dd.delAt||""});delete m[d.id];return}try{var t=JSON.parse(dd.json);if(t.del)delete m[t.id];else m[t.id]=t}catch(x){}});TOURS=Object.keys(m).map(function(k){return m[k]}).sort(function(a,b){return (a.order||0)-(b.order||0)});restoreToday();save();prefetchPhotos();if(ready&&!E&&!ET)render()},function(){});
+    db.collection("tours").onSnapshot(function(sn){var m={};BASE.forEach(function(t){m[t.id]=t});TRASH=[];sn.docs.forEach(function(d){var dd=d.data();if(dd.del===true){TRASH.push({id:d.id,name:jname(dd.json)||d.id,byName:dd.delByName||"",at:dd.delAt||""});delete m[d.id];return}try{var t=JSON.parse(dd.json);if(t.del)delete m[t.id];else m[t.id]=t}catch(x){}});TOURS=Object.keys(m).map(function(k){return m[k]}).sort(function(a,b){return (a.order||0)-(b.order||0)});restoreToday();save();prefetchPhotos();if(adm())purgeOld();if(ready&&!E&&!ET)render()},function(){});
    }
   }
  }catch(x){}
@@ -379,7 +379,8 @@ function saveTour(t){if(!db)return Promise.reject();var ref=db.doc("tours/"+t.id
   if(prev&&prev.json&&prev.json!==nj&&prev.del!==true){var now=Date.now();if(!LASTH[t.id]||now-LASTH[t.id]>600000){LASTH[t.id]=now;p=addHist(t.id,prev.json,"edit")}}
   return p.then(function(){return ref.set({json:nj,by:uid||"",at:nowIso()})})}).catch(function(){msg("Enregistrement refusé.")})}
 function delTour(id,cur){if(!db)return Promise.reject();var ref=db.doc("tours/"+id);
- return ref.get().then(function(sn){var pj=sn.exists?sn.data().json:JSON.stringify(cur||{id:id});return addHist(id,pj,"delete").then(function(){var f={del:true,delBy:uid||"",delByName:S.pseudo||"",delAt:nowIso()};return sn.exists?ref.update(f):ref.set(Object.assign({json:pj,by:uid||"",at:nowIso()},f))})})}
+ return ref.get().then(function(sn){var pj=sn.exists?sn.data().json:JSON.stringify(cur||{id:id});return Promise.resolve().then(function(){var f={del:true,delBy:uid||"",delByName:S.pseudo||"",delAt:nowIso()};return sn.exists?ref.update(f):ref.set(Object.assign({json:pj,by:uid||"",at:nowIso()},f))})})}
+function delTourNow(id){if(!db)return Promise.reject();var ref=db.doc("tours/"+id);return ref.get().then(function(sn){return(sn.exists&&sn.data().json?addHist(id,sn.data().json,"delete"):Promise.resolve()).then(function(){return ref.delete()})})}
 function restoreVersion(hid){db.doc("tourHistory/"+hid).get().then(function(sn){if(!sn.exists)return;var v=sn.data(),ref=db.doc("tours/"+v.tour);
  return ref.get().then(function(c){var p=Promise.resolve();if(c.exists&&c.data().json&&c.data().del!==true)p=addHist(v.tour,c.data().json,"edit"," (avant restauration)");return p.then(function(){return ref.set({json:v.json,by:uid||"",at:nowIso()})})})}).then(function(){msg("Version restaurée.");render()},function(){msg("Restauration impossible.")})}
 function saveContent(){return saveTour(E.t)}
@@ -395,12 +396,12 @@ function openTourEd(id){
  o+='<label>Tournée à enchaîner après celle-ci (proposée au chauffeur à la fin)</label><select class="in" id="t5"><option value="">Aucune</option>'+TOURS.filter(function(x){return x.id!==t.id}).map(function(x){return '<option value="'+x.id+'"'+(t.next===x.id?" selected":"")+'>'+X(x.name)+'</option>'}).join("")+'</select>';
  o+='<label>Notes pour le chauffeur (une par ligne)</label><div><button type="button" class="sm" data-lk="t3">🔗 Lien</button></div><div class="rte" id="t3" contenteditable="true">'+(t.notes||[]).map(LK).join("<br>")+'</div>';
  o+='<div class="btns" style="margin-top:18px"><button class="p" id="tsave">Enregistrer</button><button class="p" id="tcancel" style="background:none;color:var(--text);border:2px solid var(--line)">Annuler</button></div>';
- if(!t.isNew&&adm())o+='<div class="btns"><button class="sm" id="tdel" style="color:#c0392b">Supprimer la tournée</button></div>';
+ if(!t.isNew&&chief)o+='<div class="btns"><button class="sm" id="tdel" style="color:#c0392b">Supprimer la tournée</button></div>';
  var el=document.getElementById("ed");el.innerHTML=o;el.style.display="block"}
 function tClick(e){
  var b=e.target.closest("button");if(!b)return;var el=document.getElementById("ed");
  if(b.id==="tcancel"){el.style.display="none";ET=null;render();return}
- if(b.id==="tdel"){if(!adm()){msg("Seuls l’admin et les chefs peuvent supprimer une tournée.");return}askConfirm("Supprimer cette tournée pour tout le monde ? Elle ira dans la corbeille et pourra être restaurée.","Supprimer",function(){var tt=ET;delTour(tt.id,tt).then(function(){el.style.display="none";ET=null;location.hash="";render();msg("Tournée mise à la corbeille.")},function(){msg("Suppression impossible.")})});return}
+ if(b.id==="tdel"){var hard=adm();askConfirm(hard?"Supprimer définitivement cette tournée pour tout le monde ?":"Supprimer cette tournée ? Elle ira dans la corbeille : un chef ou l’admin décidera de l’effacer ou de la restaurer.","Supprimer",function(){var tt=ET;(hard?delTourNow(tt.id):delTour(tt.id,tt)).then(function(){el.style.display="none";ET=null;location.hash="";render();msg(hard?"Tournée supprimée.":"Tournée mise à la corbeille : un chef ou l’admin décidera.")},function(){msg("Suppression impossible.")})});return}
  if(b.id==="tsave"){var g=function(i){return document.getElementById("t"+i).value.trim()},t=ET;if(!g(0)){msg("Écris le titre de la tournée.");return}
   t.name=g(0);t.cat=g(4);t.next=g(5);t.depart=g(1);t.desc=g(2);t.notes=ed2md(document.getElementById("t3")).split("\n").map(function(x){return x.trim()}).filter(Boolean);t.sub=[t.depart?"Départ "+t.depart:"",t.desc].filter(Boolean).join(" · ");var nw=t.isNew;delete t.isNew;
   saveTour(t).then(function(){el.style.display="none";ET=null;if(nw){if(TOURS.indexOf(t)<0)TOURS.push(t);location.hash="#"+t.id}render()})}}
@@ -431,7 +432,7 @@ function edClick(e){
  if(b.id==="eadd"){if(!asset){msg("Ajout de photo réservé aux éditeurs.");return}E.rep=null;document.getElementById("efile").click();return}
  if(b.dataset.so){var k=E.i+ +b.dataset.so;if(k<0||k>=st.length){msg(k<0?"Cet arrêt est déjà le premier.":"Cet arrêt est déjà le dernier.");return}st[E.i]=E.s;var y=st[k];st[k]=st[E.i];st[E.i]=y;saveContent().then(function(){closeEd();setTimeout(function(){var el=document.getElementById("s"+(k+1));if(el)el.scrollIntoView({block:"center"})},60)});return}
  if(b.id==="esave"){if(!E.s[0]){msg("Écris le nom du client.");return}autoCaps();if(E.i<0)st.push(E.s);else st[E.i]=E.s;saveContent().then(closeEd);return}
- if(b.id==="edel"){askConfirm("Supprimer ce client de la tournée ?","Supprimer",function(){st.splice(E.i,1);saveContent().then(closeEd)})}}
+ if(b.id==="edel"){askConfirm(adm()?"Supprimer définitivement ce client de la tournée ?":"Supprimer ce client ? Il ira dans la corbeille : un chef ou l’admin décidera de l’effacer ou de le restaurer.","Supprimer",function(){var gone=st[E.i],gi=E.i,tid=E.t.id,tnm=E.t.name;if(adm())LASTH[tid]=0;if(db&&!adm())db.collection("clientTrash").add({tour:tid,tourName:tnm,name:gone[0],stop:JSON.stringify(gone),idx:gi,by:uid||"",byName:S.pseudo||"",at:nowIso()}).catch(function(){});msg(adm()?"Client supprimé.":"Client mis à la corbeille : un chef ou l’admin décidera.");st.splice(E.i,1);saveContent().then(closeEd)})}}
 document.addEventListener("change",function(e){if(e.target.id==="e7"&&E){handleAddr(e.target.value);return}if(e.target.id!=="efile"||!e.target.files[0]||!E)return;readEd();var img=new Image();img.onload=function(){var r=Math.min(1,900/Math.max(img.width,img.height)),c=document.createElement("canvas");c.width=img.width*r;c.height=img.height*r;c.getContext("2d").drawImage(img,0,0,c.width,c.height);c.toBlob(function(b){asset.upload(b).then(function(x){if(E.rep!=null&&E.s[6][E.rep]){var ok=E.s[6][E.rep][1];E.c0[x.url]=E.c0[ok];E.s[6][E.rep][1]=x.url}else E.s[6].push(["",x.url]);E.rep=null;drawEd()},function(){E.rep=null;msg("Échec de l’envoi de la photo")})},"image/jpeg",.72)};img.src=URL.createObjectURL(e.target.files[0])});
 
 function vord(t){var o=(S.ord||{})[t.id],n=t.stops.length,ix=[],i;for(i=0;i<n;i++)ix.push(i);if(!o||(SHARED&&chief))return ix;var pos={};o.forEach(function(nm,p){pos[nm]=p});return ix.sort(function(a,b){var pa=pos[t.stops[a][0]],pb=pos[t.stops[b][0]];pa=pa==null?1e6+a:pa;pb=pb==null?1e6+b:pb;return pa-pb})}
@@ -456,7 +457,7 @@ function render(){
   hd.innerHTML='<a class="back" href="#">← Toutes les tournées</a><h1>👥 Équipe et accès</h1><div class="sub">Réservé à l’admin et aux chefs</div>';
   app.innerHTML='<div class="sub">Chargement…</div>';
   Promise.all([db.collection("people").get(),db.collection("members").get(),db.doc("config/invite").get(),db.doc("config/app").get()]).then(function(R){var sn=R[0],MB={},INV=(R[2].exists&&R[2].data().code)||"",RL=(R[3].exists&&R[3].data().relay)||"";R[1].docs.forEach(function(d){MB[d.id]=d.data()});var ids=sn.docs.map(function(x){return x.id});return UNS.profiles(ids).then(function(ps){
-   var o='<div class="notes"><b>Les postes</b><ul><li><b>Chauffeur</b> : utilise les tournées et coche ses clients.</li><li><b>Chef de quai</b> : comme un chauffeur, plus l’accès au suivi des tournées en direct.</li><li><b>Éditeur</b> : peut en plus créer et modifier tournées, clients, consignes et photos, et voit le suivi.</li><li><b>Chef</b> : comme un éditeur, plus cette page (équipe, code d’invitation, corbeille, sauvegardes, relais). Seul l’admin nomme les chefs.</li><li><b>Admin</b> : tout, il choisit les chefs et l’admin suivant.</li></ul><div class="sub" style="margin-top:6px">Pour inviter quelqu’un : envoie-lui le lien de l’appli et le code d’invitation. Il crée son compte (nom et prénom, mot de passe) et apparaît ici comme chauffeur.</div></div>';
+   var o='<div class="notes"><b>Les postes</b><ul><li><b>Chauffeur</b> : utilise les tournées et coche ses clients.</li><li><b>Chef de quai</b> : comme un chauffeur, plus l’accès au suivi des tournées en direct.</li><li><b>Éditeur</b> : peut en plus créer et modifier tournées, clients, consignes et photos, et voit le suivi. Ce qu’il supprime va à la corbeille : un chef ou l’admin décide de l’effacer ou de le restaurer.</li><li><b>Chef</b> : comme un éditeur, plus cette page (équipe, code d’invitation, corbeille, sauvegardes, relais). Seul l’admin nomme les chefs.</li><li><b>Admin</b> : tout, il choisit les chefs et l’admin suivant.</li></ul><div class="sub" style="margin-top:6px">Pour inviter quelqu’un : envoie-lui le lien de l’appli et le code d’invitation. Il crée son compte (nom et prénom, mot de passe) et apparaît ici comme chauffeur.</div></div>';
    o+='<div class="row"><b>🔐 Code d’invitation</b><br><span style="font-size:22px;letter-spacing:3px;font-weight:700">'+X(INV||"(aucun)")+'</span><br><button class="sm" id="invnew">Générer un nouveau code</button><div class="sub">À donner aux personnes qui doivent créer un compte. Changer le code ne déconnecte personne. Il change aussi tout seul quand tu supprimes un utilisateur.</div></div>';
    o+='<div class="row"><b>🔗 Relais pour les liens partagés</b><br><input class="in" id="rlurl" placeholder="https://xxxx.workers.dev" value="'+esc(RL)+'" style="margin:6px 0"><button class="sm" id="rlsave">Enregistrer</button><div class="sub">Permet de lire la position d’un lien partagé Google Maps (maps.app.goo.gl) ou Plans (maps.apple). Voir les explications fournies avec l’appli.</div></div>';
    o+='<div class="row"><b>💾 Sauvegarde des tournées</b><br><button class="sm" id="bkexp">Exporter (fichier)</button> <button class="sm" id="bkimp">Importer un fichier</button><input type="file" id="bkfile" accept=".json,application/json" style="display:none"><div class="sub" id="bkmsg">Exporte toutes les tournées et leurs photos dans un fichier à garder en lieu sûr. Importer remet les tournées du fichier (un fichier de départ peut aussi servir à remplir une base vide).</div></div>';
@@ -473,12 +474,16 @@ function render(){
  if(id==="versions"&&adm()){
   hd.innerHTML='<a class="back" href="#">← Toutes les tournées</a><h1>🕘 Historique et corbeille</h1><div class="sub">Réservé à l’admin et aux chefs</div>';
   app.innerHTML='<div class="sub">Chargement…</div>';
-  db.collection("tourHistory").orderBy("at","desc").limit(60).get().then(function(sn){
-   var o='<div class="day">🗑 Corbeille (tournées supprimées)</div>';
-   o+=TRASH.length?TRASH.map(function(x){return '<div class="row"><b>'+esc(x.name)+'</b><br><span class="sub">Supprimée'+(x.byName?' par '+esc(x.byName):'')+(x.at?' · '+dtf(x.at):'')+'</span><br><button class="sm" data-rtr="'+esc(x.id)+'">Restaurer</button></div>'}).join(""):'<div class="sub">La corbeille est vide.</div>';
-   var vs=sn.docs.filter(function(d){return d.data().action!=="delete"});
+  purgeOld();
+  Promise.all([db.collection("tourHistory").orderBy("at","desc").limit(60).get(),db.collection("clientTrash").orderBy("at","desc").limit(60).get()]).then(function(R){
+   var o='<div class="sub">Tout ce qui est supprimé ou modifié reste 90 jours, puis est effacé automatiquement à la prochaine ouverture de l’app par l’admin ou un chef.</div>';
+   o+='<div class="day">🗑 Tournées supprimées</div>';
+   o+=TRASH.length?TRASH.map(function(x){return '<div class="row"><b>'+esc(x.name)+'</b><br><span class="sub">Supprimée'+(x.byName?' par '+esc(x.byName):'')+(x.at?' · '+dtf(x.at):'')+'</span><br><button class="sm" data-rtr="'+esc(x.id)+'">Restaurer</button> <button class="sm" data-ptr="'+esc(x.id)+'" data-nm="'+esc(x.name)+'" style="color:#c0392b">Effacer</button></div>'}).join(""):'<div class="sub">Aucune tournée supprimée.</div>';
+   o+='<div class="day">🗑 Clients supprimés</div>';
+   o+=R[1].docs.length?R[1].docs.map(function(d){var v=d.data();return '<div class="row"><b>'+esc(v.name)+'</b> · '+esc(v.tourName)+'<br><span class="sub">Supprimé par '+esc(v.byName||"?")+' · '+dtf(v.at)+'</span><br><button class="sm" data-rcl="'+d.id+'">Restaurer</button> <button class="sm" data-pcl="'+d.id+'" data-nm="'+esc(v.name)+'" style="color:#c0392b">Effacer</button></div>'}).join(""):'<div class="sub">Aucun client supprimé.</div>';
+   var vs=R[0].docs;
    o+='<div class="day">Versions précédentes</div><div class="sub">Une version est enregistrée avant chaque série de modifications (au plus une toutes les 10 minutes par tournée).</div>';
-   o+=vs.length?vs.map(function(d){var v=d.data();return '<div class="row"><b>'+esc(v.name||v.tour)+'</b><br><span class="sub">Avant la modification de '+esc(v.byName||"?")+' · '+dtf(v.at)+'</span><br><button class="sm" data-rv="'+d.id+'">Restaurer cette version</button> <button class="sm" data-rvx="'+d.id+'" style="color:#c0392b">Effacer</button></div>'}).join(""):'<div class="sub">Aucune version enregistrée pour l’instant.</div>';
+   o+=vs.length?vs.map(function(d){var v=d.data();return '<div class="row"><b>'+esc(v.name||v.tour)+'</b><br><span class="sub">'+(v.action==="delete"?"Tournée supprimée par ":"Avant la modification de ")+esc(v.byName||"?")+' · '+dtf(v.at)+'</span><br><button class="sm" data-rv="'+d.id+'">Restaurer cette version</button> <button class="sm" data-rvx="'+d.id+'" style="color:#c0392b">Effacer</button></div>'}).join(""):'<div class="sub">Aucune version enregistrée pour l’instant.</div>';
    app.innerHTML=o},function(){app.innerHTML='<div class="sub">Impossible de charger l’historique.</div>'});
   return}
  if(id==="reclam"){
@@ -515,7 +520,7 @@ function render(){
   h+='<a class="chief" href="#reclam">'+(chief?'📨 Réclamations des chauffeurs':'📨 Signaler un problème ou proposer une idée')+'</a>';
   if(chief||dock)h+='<a class="chief" href="#suivi">🔒 Voir le suivi des tournées</a>';
   if(adm())h+='<a class="chief" href="#equipe">👥 Équipe et accès'+(owner?' (propriétaire)':' (chef)')+'</a>';
-  if(adm())h+='<a class="chief" href="#versions">🕘 Historique et corbeille</a>';
+  if(adm())h+='<a class="chief" href="#versions">🕘 Historique et corbeille'+((TRASH.length+CTN)?' ('+(TRASH.length+CTN)+' à traiter)':'')+'</a>';
   h+='<a class="chief" href="#histo">📅 Mon historique</a>'+fbLink()+'</div>';
   app.innerHTML=h;return}
  
@@ -558,7 +563,10 @@ document.addEventListener("click",function(e){var t=e.target;if(!t||!t.closest)r
  if(t.closest("#pwchg")){pwDlg();return}
  var rtr=t.closest("[data-rtr]");if(rtr&&adm()){db.doc("tours/"+rtr.dataset.rtr).update({del:false}).then(function(){msg("Tournée restaurée.");render()},function(){msg("Restauration impossible.")});return}
  var rvb=t.closest("[data-rv]");if(rvb&&adm()){askConfirm("Restaurer cette version ? La version actuelle sera elle aussi gardée dans l’historique.","Restaurer",function(){restoreVersion(rvb.dataset.rv)});return}
- var rvx=t.closest("[data-rvx]");if(rvx&&adm()){db.doc("tourHistory/"+rvx.dataset.rvx).delete().then(render,function(){msg("Refusé.")});return}
+ var rvx=t.closest("[data-rvx]");if(rvx&&adm()){askConfirm("Effacer cette version pour de bon ? Impossible de la récupérer ensuite.","Effacer pour de bon",function(){db.doc("tourHistory/"+rvx.dataset.rvx).delete().then(render,function(){msg("Refusé.")})});return}
+ var rcl=t.closest("[data-rcl]");if(rcl&&adm()){restoreClient(rcl.dataset.rcl);return}
+ var pcl=t.closest("[data-pcl]");if(pcl&&adm()){askConfirm("Effacer définitivement le client « "+pcl.dataset.nm+" » ? Impossible de le récupérer ensuite.","Effacer pour de bon",function(){db.doc("clientTrash/"+pcl.dataset.pcl).delete().then(render,function(){msg("Refusé.")})});return}
+ var ptr=t.closest("[data-ptr]");if(ptr&&adm()){askConfirm("Effacer définitivement la tournée « "+ptr.dataset.nm+" » ? Impossible de la récupérer ensuite.","Effacer pour de bon",function(){db.doc("tours/"+ptr.dataset.ptr).delete().then(render,function(){msg("Refusé.")})});return}
  var sr=t.closest("[data-sr]");if(sr&&adm()){var pr=sr.dataset.sr.split("|");setRole(pr[1],pr[0]);return}
  var dl=t.closest("[data-del]");if(dl&&adm()){delUser(dl.dataset.del,dl.dataset.nm,dl.dataset.sl);return}
  if(t.closest("#rlsave")&&adm()){var rv=(document.getElementById("rlurl").value||"").trim();db.doc("config/app").set({relay:rv},{merge:true}).then(function(){RELAY=rv;msg(rv?"Relais enregistré.":"Relais désactivé.")},function(){msg("Refusé.")});return}
@@ -621,6 +629,14 @@ function resolveShort(r){if(r.url===lastShort)return;lastShort=r.url;msg("Lectur
 function askChoice(text,label,fn){var d=document.createElement("div");d.id="cf";d.innerHTML='<div class="cfb"><p>'+esc(text)+'</p><div class="btns"><button class="p" id="cfn" style="background:none;color:var(--text);border:2px solid var(--line)">Annuler</button><button class="p" id="cfy">'+esc(label)+'</button></div></div>';document.body.appendChild(d);d.querySelector("#cfn").onclick=function(){d.remove()};d.querySelector("#cfy").onclick=function(){d.remove();fn()}}
 function autoCaps(){var s=E.s,add=[];(s[6]||[]).forEach(function(p){var c=String(p[0]||"").trim();if(c&&E.c0[p[1]]!==c&&String(s[5]||"").indexOf(c)<0)add.push(c)});if(add.length)s[5]=(s[5]?s[5]+"<br>":"")+add.map(function(c){return "- "+c}).join("<br>")}
 function adm(){return owner||chefR}
+var PURGED=0;
+function purgeOld(){if(!db||!adm()||PURGED)return;PURGED=1;var cut=new Date(Date.now()-90*864e5).toISOString();
+ ["tourHistory","clientTrash"].forEach(function(c){db.collection(c).where("at","<",cut).limit(200).get().then(function(sn){sn.docs.forEach(function(d){d.ref.delete().catch(function(){})})},function(){})});
+ TRASH.forEach(function(x){if(x.at&&x.at<cut)db.doc("tours/"+x.id).delete().catch(function(){})})}
+function restoreClient(cid){var cr=db.doc("clientTrash/"+cid);cr.get().then(function(sn){if(!sn.exists)return;var v=sn.data(),tr=db.doc("tours/"+v.tour);
+ return tr.get().then(function(c){if(!c.exists||c.data().del===true){msg("La tournée n’existe plus : restaure-la d’abord.");return}var t,st;try{t=JSON.parse(c.data().json);st=JSON.parse(v.stop)}catch(x){msg("Données illisibles.");return}
+  t.stops=t.stops||[];t.stops.splice(Math.min(+v.idx||0,t.stops.length),0,st);
+  return addHist(v.tour,c.data().json,"edit"," (avant restauration d’un client)").then(function(){return tr.set({json:JSON.stringify(t),by:uid||"",at:nowIso()})}).then(function(){return cr.delete()}).then(function(){msg("Client restauré dans « "+(t.name||"la tournée")+" ».");render()})})}).catch(function(){msg("Restauration impossible.")})}
 function updSP(){var h=document.getElementById("hd");if(h)document.documentElement.style.scrollPaddingTop=(h.getBoundingClientRect().bottom+12)+"px"}
 window.addEventListener("resize",updSP);
 function cur(){return TOURS.find(function(x){return x.id===location.hash.slice(1)})}
