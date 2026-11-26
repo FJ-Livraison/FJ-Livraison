@@ -235,7 +235,7 @@ async function boot(){
   if(window.claude){
    var d=await claude.use("db"),u=await claude.use("user");
    if(d&&u){
-    var me=await u.me();uid=me.id;db=d;try{localStorage.setItem("fbok","1")}catch(x){}owner=await u.isOwner();chief=owner;UNS=u;
+    var me=await u.me();uid=me.id;db=d;try{localStorage.setItem("fbok","1")}catch(x){}owner=await u.isOwner();chief=owner;UNS=u;watchCTN();
     var ad0=await fget(db.doc("config/admin"));ADMINID=ad0.exists?ad0.data().uid:"";
     if(!owner){var rv=await db.doc("members/"+uid).get({source:"server"}).then(function(sn){return !sn.exists},function(){return false});
      if(rv){db=null;try{await FBX.logout()}catch(x){}ready=true;loginScreen("Votre accès a été retiré. Créez un compte avec le nouveau code d’invitation.");return}}
@@ -251,8 +251,8 @@ async function boot(){
     db.doc("config/dock").onSnapshot(function(sn){DOCK=(sn.exists&&sn.data().ids)||[];dock=DOCK.indexOf(uid)>=0;if(ready&&!E&&!ET)render()},function(){});
     db.doc("config/app").onSnapshot(function(sn){RELAY=(sn.exists&&sn.data().relay)||""},function(){});
     if(!owner)db.doc("members/"+uid).onSnapshot(function(sn){if(!sn.exists&&!sn.metadata.fromCache&&window.FBX)FBX.logout().then(function(){location.reload()})},function(){});
-    db.doc("config/admins").onSnapshot(function(sn){ADMINS=(sn.exists&&sn.data().ids)||[];var was=owner;owner=(ADMINID===uid)||ADMINS.indexOf(uid)>=0||(sn.metadata.fromCache&&was);chief=owner||chefR||EDS.indexOf(uid)>=0;if(ready&&!E&&!ET)render()},function(){});
-    db.doc("config/chefs").onSnapshot(function(sn){CHEFS=(sn.exists&&sn.data().ids)||[];chefR=CHEFS.indexOf(uid)>=0;chief=owner||chefR||EDS.indexOf(uid)>=0;if(ready&&!E&&!ET)render()},function(){});
+    db.doc("config/admins").onSnapshot(function(sn){ADMINS=(sn.exists&&sn.data().ids)||[];var was=owner;owner=(ADMINID===uid)||ADMINS.indexOf(uid)>=0||(sn.metadata.fromCache&&was);chief=owner||chefR||EDS.indexOf(uid)>=0;watchCTN();if(ready&&!E&&!ET)render()},function(){});
+    db.doc("config/chefs").onSnapshot(function(sn){CHEFS=(sn.exists&&sn.data().ids)||[];chefR=CHEFS.indexOf(uid)>=0;chief=owner||chefR||EDS.indexOf(uid)>=0;watchCTN();if(ready&&!E&&!ET)render()},function(){});
     db.doc("config/editors").onSnapshot(function(sn){EDS=(sn.exists&&sn.data().ids)||[];chief=owner||chefR||EDS.indexOf(uid)>=0;if(ready&&!E&&!ET)render()},function(){});
     db.collection("tours").onSnapshot(function(sn){var m={};BASE.forEach(function(t){m[t.id]=t});TRASH=[];sn.docs.forEach(function(d){var dd=d.data();if(dd.del===true){TRASH.push({id:d.id,name:jname(dd.json)||d.id,byName:dd.delByName||"",at:dd.delAt||""});delete m[d.id];return}try{var t=JSON.parse(dd.json);if(t.del)delete m[t.id];else m[t.id]=t}catch(x){}});TOURS=Object.keys(m).map(function(k){return m[k]}).sort(function(a,b){return (a.order||0)-(b.order||0)});restoreToday();save();prefetchPhotos();if(adm())purgeOld();if(ready&&!E&&!ET)render()},function(){});
    }
@@ -391,7 +391,8 @@ function mapSheet(i){var t=cur();if(!t)return;var s=t.stops[i],d=document.create
  d.innerHTML='<div class="cfb"><p><b>'+X(s[0])+'</b>'+(s[8]?'<br><span class="sub">📍 '+X(s[8])+'</span>':'')+'</p><div class="btns">'+nav(s)+'</div><div class="btns" style="margin-top:8px"><button class="p" id="mgo" style="background:none;color:var(--text);border:2px solid var(--line)">Voir la fiche</button><button class="p" id="mxx" style="background:none;color:var(--text);border:2px solid var(--line)">Fermer</button></div></div>';document.body.appendChild(d);
  d.querySelector("#mxx").onclick=function(){d.remove()};
  d.querySelector("#mgo").onclick=function(){d.remove();mapFs(false);var c=document.getElementById("s"+(i+1));if(c){c.style.display="";c.scrollIntoView({block:"start"})}}}
-var LASTH={},TRASH=[];
+var LASTH={},TRASH=[],CTN=0,CTNW=0;
+function watchCTN(){if(CTNW||!db||!adm())return;CTNW=1;db.collection("clientTrash").onSnapshot(function(sn){CTN=sn.docs.length;if(ready&&!E&&!ET)render()},function(){CTNW=0})}
 function nowIso(){return new Date().toISOString()}
 function dtf(iso){try{return new Date(iso).toLocaleString("fr-FR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}catch(e){return ""}}
 function jname(j){try{return JSON.parse(j).name||""}catch(e){return ""}}
