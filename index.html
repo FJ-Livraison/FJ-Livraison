@@ -599,7 +599,7 @@ function render(){
   if(chief)h='<div class="day">Toutes les réclamations</div><div id="rl" class="sub">Chargement…</div>';
   app.innerHTML=h;
   var TL={pb:"🐞 Problème",id:"💡 Idée",mod:"✏️ Modification client"};
-  if(db)db.collection("reports").get().then(function(sn){var rs=sn.docs.map(function(x){var v=x.data();v.id=x.id;return v}).filter(function(v){return chief||v.by===uid}).sort(function(a,b){return (b.at||"").localeCompare(a.at||"")}),o="";
+  if(db)(chief?db.collection("reports"):db.collection("reports").where("by","==",uid)).get().then(function(sn){var rs=sn.docs.map(function(x){var v=x.data();v.id=x.id;return v}).filter(function(v){return chief||v.by===uid}).sort(function(a,b){return (b.at||"").localeCompare(a.at||"")}),o="";
    rs.forEach(function(v){var dn=v.st==="done";o+='<div class="row"'+(dn?' style="opacity:.6"':'')+'><b>'+X(TL[v.type]||"Message")+'</b> · '+X(v.pseudo)+' · '+X((v.at||"").slice(0,10))+' · '+(dn?"✅ Traité":"⏳ En attente")+(v.stop?'<br>Client : <b>'+X(v.stop)+'</b> ('+X(v.tour)+')':'')+'<br>'+X(v.text)+(chief?'<br><button class="sm" data-rd="'+v.id+'" data-st="'+(dn?"new":"done")+'">'+(dn?"↩︎ Rouvrir":"✅ Marquer traité")+'</button> <button class="sm" data-rm2="'+v.id+'" style="color:#c0392b">Supprimer</button>':'')+'</div>'});
    document.getElementById("rl").innerHTML=o||"Rien pour l’instant."},function(){document.getElementById("rl").textContent="Impossible de charger les informations."});
   return}
