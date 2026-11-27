@@ -445,7 +445,8 @@ function openEd(t,i){var n=i==="new";E={t:t,i:n?-1:+i,s:n?["","","",0,0,"",[],""
 function drawEd(){
  var s=E.s,o='<h2 style="margin:0">'+(E.i<0?"Nouvel arrêt":"Modifier l’arrêt")+'</h2>';
  o+='<label>Nom du client</label><input class="in" id="e0" value="'+esc(unesc(s[0]))+'"><label>Heure d’arrivée (ex : 2h05 à 2h10)</label><input class="in" id="e1" value="'+esc(unesc(s[1]))+'">';
- o+='<label>⏰ Heure impérative de livraison <span class="sub">(facultatif : client important qui doit être livré au plus tard à cette heure, ex : 6h00)</span></label><input class="in" id="e11" value="'+esc(s[11]||"")+'" placeholder="6h00" autocapitalize="off" autocorrect="off">';
+ var v11=String(s[11]||"").trim(),m11=v11.match(/^dès\s+(.+)$/i),w11=v11.split(/\s+à\s+/),lo11=m11?m11[1]:(w11.length>1?w11[0]:""),hi11=m11?"":(w11.length>1?w11[1]:(w11[0]||""));
+ o+='<label>⏰ Heure impérative de livraison <span class="sub">(facultatif : tu peux remplir seulement « Mini » (pas avant), seulement « Maxi » (au plus tard), ou les deux)</span></label><div style="display:flex;gap:8px;align-items:flex-end"><div style="flex:1"><span class="sub">Mini (pas avant)</span><input class="in" id="e11a" value="'+esc(lo11)+'" placeholder="5h00" autocapitalize="off" autocorrect="off"></div><div style="flex:1"><span class="sub">Maxi (au plus tard)</span><input class="in" id="e11b" value="'+esc(hi11)+'" placeholder="5h30" autocapitalize="off" autocorrect="off"></div></div>';
  o+='<label>Adresse : écris-la ou colle un lien / une adresse copiée depuis Waze, Maps ou Plans</label><input class="in" id="e7" value="'+esc(unesc(s[7]||""))+'" placeholder="12 rue de la Gare, 03100 Montluçon">';
  o+='<label>Ville (sert à la recherche, ex : Gerzat)</label><input class="in" id="e8" value="'+esc(unesc(s[8]||""))+'">';
  o+='<label>Téléphone du client, puis lien à ouvrir en touchant le numéro (facultatifs)</label><div style="display:flex;gap:8px"><input class="in" id="e9" type="tel" style="flex:1;min-width:0" value="'+esc(s[9]||"")+'" placeholder="Numéro"><input class="in" id="e10" style="flex:1;min-width:0" value="'+esc(s[10]||"")+'" placeholder="Lien (https://…)" autocapitalize="off" autocorrect="off"></div>';
@@ -457,7 +458,7 @@ function drawEd(){
  o+='<div class="btns" style="margin-top:18px"><button class="p" id="esave">Enregistrer</button><button class="p" id="ecancel" style="background:none;color:var(--text);border:2px solid var(--line)">Annuler</button></div>';
  if(E.i>=0)o+='<div class="btns"><button class="sm" id="edel" style="color:#c0392b">Supprimer</button></div>';
  var el=document.getElementById("ed");el.innerHTML=o;el.style.display="block"}
-function readEd(){var s=E.s,g=function(i){return document.getElementById("e"+i).value};s[0]=g(0).trim();s[1]=g(1).trim();s[2]=g(2).trim();s[3]=parseFloat(g(3))||0;s[4]=parseFloat(g(4))||0;s[7]=g(7).trim();s[8]=g(8).trim();s[9]=g(9).trim();s[10]=g(10).trim();s[11]=normT(g(11));E.badT=!!g(11).trim()&&!s[11];s[12]=g(12).trim();s[13]=g(13);s[5]=ed2md(document.getElementById("e5")).split("\n").join("<br>");document.querySelectorAll("[data-cap]").forEach(function(i){s[6][i.dataset.cap][0]=i.value})}
+function readEd(){var s=E.s,g=function(i){return document.getElementById("e"+i).value};s[0]=g(0).trim();s[1]=g(1).trim();s[2]=g(2).trim();s[3]=parseFloat(g(3))||0;s[4]=parseFloat(g(4))||0;s[7]=g(7).trim();s[8]=g(8).trim();s[9]=g(9).trim();s[10]=g(10).trim();var ga=document.getElementById("e11a").value,gb=document.getElementById("e11b").value,na=normT(ga),nb=normT(gb);s[11]=na&&nb?na+" à "+nb:(nb||(na?"dès "+na:""));E.badT=(!!ga.trim()&&!na)||(!!gb.trim()&&!nb)||(!!na&&!!nb&&t2m(na)>t2m(nb));s[12]=g(12).trim();s[13]=g(13);s[5]=ed2md(document.getElementById("e5")).split("\n").join("<br>");document.querySelectorAll("[data-cap]").forEach(function(i){s[6][i.dataset.cap][0]=i.value})}
 function closeEd(){document.getElementById("ed").style.display="none";E=null;render()}
 function edClick(e){
  if(ET){tClick(e);return}
@@ -470,7 +471,7 @@ function edClick(e){
  if(b.dataset.mv!=null){var j=+b.dataset.mv;if(j>0){var x=a[j];a[j]=a[j-1];a[j-1]=x}drawEd();return}
  if(b.id==="eadd"){if(!asset){msg("Ajout de photo réservé aux éditeurs.");return}E.rep=null;var ef2=document.getElementById("efile");ef2.multiple=true;ef2.click();return}
  if(b.dataset.so){var k=E.i+ +b.dataset.so;if(k<0||k>=st.length){msg(k<0?"Cet arrêt est déjà le premier.":"Cet arrêt est déjà le dernier.");return}st[E.i]=E.s;var y=st[k];st[k]=st[E.i];st[E.i]=y;saveContent().then(function(){closeEd();setTimeout(function(){var el=document.getElementById("s"+(k+1));if(el)el.scrollIntoView({block:"center"})},60)});return}
- if(b.id==="esave"){if(!E.s[0]){msg("Écris le nom du client.");return}if(E.badT){msg("Heure impérative : écris-la par exemple 6h00.");return}autoCaps();var oldS=E.i>=0?st[E.i]:null,newS=E.s,T0=E.t;if(E.i<0)st.push(E.s);else st[E.i]=E.s;saveContent().then(function(){closeEd();offerSync(T0,oldS,newS)});return}
+ if(b.id==="esave"){if(!E.s[0]){msg("Écris le nom du client.");return}if(E.badT){msg("Heure impérative : écris une heure comme 6h00 (Mini et/ou Maxi). Le Mini doit être avant le Maxi.");return}autoCaps();var oldS=E.i>=0?st[E.i]:null,newS=E.s,T0=E.t;if(E.i<0)st.push(E.s);else st[E.i]=E.s;saveContent().then(function(){closeEd();offerSync(T0,oldS,newS)});return}
  if(b.id==="edel"){askConfirm("Supprimer ce client de la tournée ? Il ira dans la corbeille pendant 90 jours.","Supprimer",function(){var gone=st[E.i],gi=E.i,tid=E.t.id,tnm=E.t.name;var tp=db?db.collection("clientTrash").add({tour:tid,tourName:tnm,name:gone[0],stop:JSON.stringify(gone),idx:gi,by:uid||"",byName:S.pseudo||"",at:nowIso()}).catch(function(){return null}):Promise.resolve(null);st.splice(E.i,1);saveContent().then(function(){closeEd();utShow("🗑 Client supprimé",function(){var tt=TOURS.find(function(x){return x.id===tid});if(!tt){msg("La tournée n’existe plus.");return}tt.stops=tt.stops||[];tt.stops.splice(Math.min(gi,tt.stops.length),0,gone);saveTour(tt).then(function(){tp.then(function(r){if(r&&r.delete)r.delete().catch(function(){})});render();msg("Client remis dans la tournée.")})})})})}}
 document.addEventListener("change",function(e){if(e.target.id==="e7"&&E){handleAddr(e.target.value);return}if(e.target.id!=="efile"||!e.target.files.length||!E)return;readEd();
  var files=[].slice.call(e.target.files),rep=E.rep,n=0,fails=0;e.target.value="";
@@ -699,19 +700,21 @@ function t2m(x){var m=String(x||"").match(/(\d{1,2})\s*[hH:]\s*(\d{0,2})/);retur
 function m2t(m){m=((Math.round(m)%1440)+1440)%1440;return Math.floor(m/60)+"h"+pad(m%60)}
 function isoMin(iso){var d=new Date(iso);return d.getHours()*60+d.getMinutes()}
 function delayOf(t,sm){var best=null;Object.keys(sm||{}).forEach(function(k){var s=t.stops[k-1];if(!s)return;var p=t2m(s[1]);if(p==null)return;var d=isoMin(sm[k])-p;if(d>720)d-=1440;if(d<-720)d+=1440;if(!best||String(sm[k])>String(best.at))best={d:d,at:sm[k],k:+k}});return best}
+function winOf(x){x=String(x||"");if(/^\s*dès\s/i.test(x))return{lo:t2m(x),hi:null};var a=x.split(/\s+à\s+/);if(a.length>1)return{lo:t2m(a[0]),hi:t2m(a[1])};return{lo:null,hi:t2m(x)}}
+function winTxt(x){return x.lo!=null?m2t(x.lo)+" à "+m2t(x.T):m2t(x.T)}
 function risks(t,sm){var dl=delayOf(t,sm),d=dl?dl.d:0,now=new Date(),nm=now.getHours()*60+now.getMinutes(),o=[];
- t.stops.forEach(function(s,i){var T=t2m(s[11]);if(T==null||(sm&&sm[i+1]))return;var p=t2m(s[1]);if(p==null)p=nm;var est=p+d;if(dl&&est<nm)est=nm;if(est>T)o.push({i:i,s:s,est:est,T:T,over:est-T})});
+ t.stops.forEach(function(s,i){var W=winOf(s[11]);if(W.hi==null||(sm&&sm[i+1]))return;var p=t2m(s[1]);if(p==null)p=nm;var est=p+d;if(dl&&est<nm)est=nm;if(est>W.hi)o.push({i:i,s:s,est:est,T:W.hi,lo:W.lo,over:est-W.hi})});
  return{d:dl,list:o}}
 function dlTxt(d){return Math.abs(d)<3?"à l’heure":d>0?"retard de "+d+" min":"avance de "+(-d)+" min"}
 function riskHtml(t){var R=risks(t,(S.logs[t.id]||{}).stops||{}),o="";
  if(R.d)o+='<div class="sub" style="margin:0 0 8px">⏱ '+dlTxt(R.d.d)+' par rapport au planning</div>';
- if(R.list.length)o+='<div class="alertb">⚠️ <b>Heure impérative à risque</b>'+R.list.map(function(x){return '<div><b>'+X(x.s[0])+'</b> : impératif '+m2t(x.T)+' · arrivée estimée '+m2t(x.est)+(x.over>0?' (+'+x.over+' min)':'')+(x.s[9]?' '+PB(x.s):'')+'</div>'}).join("")+'</div>';
+ if(R.list.length)o+='<div class="alertb">⚠️ <b>Heure impérative à risque</b>'+R.list.map(function(x){return '<div><b>'+X(x.s[0])+'</b> : impératif '+winTxt(x)+' · arrivée estimée '+m2t(x.est)+(x.over>0?' (+'+x.over+' min)':'')+(x.s[9]?' '+PB(x.s):'')+'</div>'}).join("")+'</div>';
  return o}
 function suiviExtra(r){var t=TOURS.find(function(x){return x.id===r.tour});if(!t)return"";var sm=r.stops||{},dl=delayOf(t,sm),o="";
  if(dl)o+='<br>⏱ '+dlTxt(dl.d)+' par rapport au planning';
  var ts=Object.keys(sm).map(function(k){return sm[k]}).sort();
  if(r.done===r.total&&ts.length>1){var du=Math.round((new Date(ts[ts.length-1])-new Date(ts[0]))/60000);o+='<br>🏁 Tournée faite en '+Math.floor(du/60)+' h '+pad(du%60)}
- risks(t,sm).list.forEach(function(x){o+='<br>⚠️ <b>'+esc(unesc(x.s[0]))+'</b> : impératif '+m2t(x.T)+', arrivée estimée '+m2t(x.est)+(x.over>0?' (+'+x.over+' min)':'')});
+ risks(t,sm).list.forEach(function(x){o+='<br>⚠️ <b>'+esc(unesc(x.s[0]))+'</b> : impératif '+winTxt(x)+', arrivée estimée '+m2t(x.est)+(x.over>0?' (+'+x.over+' min)':'')});
  return o}
 function tnote(s){var tx=String(s[12]||"").trim();if(!tx)return"";var u=String(s[13]||"");if(u&&today()>u)return"";return '<div class="tnote">📌 '+X(tx)+(u?' <span class="sub">(jusqu’au '+u.slice(8,10)+'/'+u.slice(5,7)+')</span>':'')+'</div>'}
 var UT=null;
